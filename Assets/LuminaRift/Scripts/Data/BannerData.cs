@@ -8,10 +8,10 @@ namespace LuminaRift
     [CreateAssetMenu(fileName = "Banner", menuName = "Lumina Rift/Banner")]
     public sealed class BannerData : ScriptableObject
     {
-        [SerializeField] private string bannerId = "banner_id";
+        [SerializeField] private string bannerId = "banner";
         [SerializeField] private string displayName = "Rift Banner";
         [SerializeField, TextArea] private string description = "Echoes wait beyond the Rift.";
-        [SerializeField] private BannerCurrency currency = BannerCurrency.StandardTickets;
+        [SerializeField] private BannerCurrency currency;
         [SerializeField, Min(1)] private int singlePullCost = 1;
         [SerializeField, Min(1)] private int tenPullCost = 10;
         [SerializeField, Min(0f)] private float threeStarRate = 75f;
@@ -38,18 +38,12 @@ namespace LuminaRift
         public float RateUpShareOfFiveStar { get { return rateUpShareOfFiveStar; } }
         public Color AccentColor { get { return accentColor; } }
 
-        public void ConfigurePrototype(string id, string name, string bannerDescription, BannerCurrency bannerCurrency,
-            int singleCost, int multiCost, IList<CharacterData> pool, CharacterData rateUp, Color accent)
+        public void Configure(string id, string name, string bio, BannerCurrency type, int singleCost,
+            int multiCost, IList<CharacterData> pool, CharacterData rateUp, Color color)
         {
-            bannerId = id;
-            displayName = name;
-            description = bannerDescription;
-            currency = bannerCurrency;
-            singlePullCost = singleCost;
-            tenPullCost = multiCost;
-            characterPool = new List<CharacterData>(pool);
-            rateUpCharacter = rateUp;
-            accentColor = accent;
+            bannerId = id; displayName = name; description = bio; currency = type;
+            singlePullCost = singleCost; tenPullCost = multiCost; characterPool = new List<CharacterData>(pool);
+            rateUpCharacter = rateUp; accentColor = color;
         }
     }
 }

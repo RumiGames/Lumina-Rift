@@ -1,54 +1,38 @@
-# Lumina Rift — Prototype 0.0.2
+# Lumina Rift — Prototype 0.0.3: Long-Term Progression
 
-Open `Assets/Scenes/SampleScene.unity` and press Play. The prototype creates its UI automatically and requires no scene wiring.
+Open `Assets/Scenes/Main.unity` and press Play. On first import, the editor creates the scene and all character, banner, and balance ScriptableObjects automatically.
 
-## Complete prototype loop
+## Added in 0.0.3
 
-1. Use the **Main** screen to tap the active Echo, earn Credits, and buy run levels.
-2. Claim Standard Tickets from level milestones at levels 10, 25, 50, 75, and 100.
-3. Use **Summon** for Standard Ticket or Featured Lumina pulls. Both banners support single and 10-pulls.
-4. A 10-pull guarantees at least one 4-star or higher result. Each banner tracks separate hard pity at 30 pulls.
-5. New Echoes enter the collection without replacing the active Echo. Duplicates award permanent Affinity XP.
-6. Use **Characters** to inspect all unlocked and locked cards and manually select the active Echo.
-7. At level 50 or beyond, preview and confirm Ascension. Extra levels grant more Lumina and additional Ascension Power.
-8. Ascension resets Credits, run levels, and milestone claims. It keeps ownership, Affinity, tickets, Lumina, pity, the active selection, and permanent power.
+- Versioned JSON save/load for the current run, collection, Affinity, active Echo, currencies, Ascension progression, banner pity, automation settings, milestone claims, and telemetry.
+- Autosave every 10 seconds and saves on pause, quit, summons, Ascension, offline collection, and save reset.
+- Offline passive Credits based on the saved active Echo, capped at 8 hours, with a Welcome Back collection panel.
+- Rift Rank, Ascension Count, and visible convenience milestones.
+- Level x10/x25 at Ascension 2, Level MAX at Ascension 3, Auto-Level at Ascension 5, and starting level 5 at Ascension 10.
+- Local Rift Record statistics: run/lifetime time, last Ascension duration, highest level, pulls, 5-star pulls, clicks, and lifetime Credits.
+- A confirmed developer Reset Save button.
 
-## Architecture
+The existing Standard/Featured banners, separate 30-pull pity, 10-pull guarantee, Affinity ranks, six-Echo roster, and scalable Ascension rewards are preserved.
 
-- `CharacterData`: static identity, rarity, base income, cost multiplier, and click/passive level exponents.
-- `CharacterRuntimeState`: mutable ownership, run level, and permanent Affinity XP.
-- `BannerData`: currency, costs, rates, pool, rate-up, hard pity, and visual accent.
-- `GachaManager`: rarity rolls, per-banner pity, 10-pull guarantee, rate-up selection, unlocks, and duplicates.
-- `LuminaRiftGameState`: run economy, active character, milestones, income, currencies, and Ascension resets.
-- `LuminaRiftPrototypeUI`: Main, Characters, and Summon screens plus replaceable summon/Ascension overlays.
-- `PrototypeAssetSetup`: creates the default ScriptableObject assets and offers a rebuild menu command.
+## Tuning
 
-## Major tuning locations
+After Unity imports the project:
 
-- `Resources/PrototypeGameConfig.asset`: level cap/cost curve, milestones, Affinity thresholds and bonuses, Ascension formula, permanent power scaling.
-- `Resources/Characters/*.asset`: each Echo's income bases, level cost multiplier, and early/late scaling exponents.
-- `Resources/Banners/*.asset`: banner currency/cost, 75/20/5 rates, 30-pull pity, pool, and featured rate-up.
+- `Assets/LuminaRift/Resources/PrototypeGameConfig.asset` controls offline cap, automation milestones, level economy, Affinity, and Ascension rewards.
+- `Assets/LuminaRift/Resources/Characters/*.asset` controls per-character cost and income scaling.
+- `Assets/LuminaRift/Resources/Banners/*.asset` controls costs, pools, rates, rate-up, and pity.
 
-Default Affinity progression is:
+The local save is named `lumina-rift-save.json` under `Application.persistentDataPath`. Saving is local-only; no telemetry leaves the device.
 
-- Affinity I: unlocked.
-- Affinity II at 25 XP: +10% base click income.
-- Affinity III at 75 XP: +10% base passive income.
+Run **Lumina Rift > Validate Prototype 0.0.3 Loop** for the deterministic in-editor smoke test.
 
-Default Ascension progression is 100 Lumina and +1 Power at level 50, +20 Lumina per extra level, and +1 additional Power per 10 extra levels. Each Power adds +25% global income.
+## Known limits
 
-## Validation
+- No cloud save, save migration beyond version 1, or tamper protection.
+- Offline income uses only the active Echo; support teams do not exist yet.
+- Runtime visuals remain prototype IMGUI and target a 16:9 landscape layout.
+- Summon reveals have no skip/history controls.
 
-Run **Lumina Rift > Validate Prototype 0.0.2 Loop** to smoke-test milestone tickets, the 10-pull guarantee, collection persistence, Ascension rewards/resets, and a post-Ascension Featured summon.
+## Recommended 0.0.4
 
-## Known prototype limits
-
-- No save data or offline income; state lasts for the current play session only.
-- Summon presentation uses placeholder UI flashes and sequential cards, with no skip control yet.
-- The six-character roster and balance values are for loop testing, not final balance.
-- Pity is kept through in-session Ascensions but cannot persist between launches until saving is added.
-- Runtime UI is optimized for a 16:9 landscape reference resolution.
-
-## Recommended Prototype 0.0.3 direction
-
-Add versioned local save data first, then offline income and basic economy analytics. After persistence is trustworthy, improve summon pacing with skip/history controls and use playtest data to tune character efficiency, Affinity thresholds, and Ascension timing. Avoid expanding the roster until the collection loop has measurable retention and choice value.
+Playtest multiple sessions first and use the Rift Record to tune time-to-Ascend, Featured-pull cadence, and automation thresholds. Once retention pacing is sound, build Active + Support teams, character abilities, tags, and synergy so collection choices affect more than income curves.

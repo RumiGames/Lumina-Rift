@@ -1,7 +1,9 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace LuminaRift.Editor
 {
@@ -10,63 +12,42 @@ namespace LuminaRift.Editor
     {
         private const string Root = "Assets/LuminaRift/Resources";
         private const string ConfigPath = Root + "/PrototypeGameConfig.asset";
+        private const string ScenePath = "Assets/Scenes/Main.unity";
+        static PrototypeAssetSetup() { EditorApplication.delayCall += EnsureAssets; }
 
-        static PrototypeAssetSetup() { EditorApplication.delayCall += EnsurePrototypeAssets; }
+        [MenuItem("Lumina Rift/Rebuild Prototype 0.0.3 Data")]
+        public static void Rebuild() { AssetDatabase.DeleteAsset(Root); BuildData(); }
 
-        [MenuItem("Lumina Rift/Rebuild Prototype 0.0.2 Data")]
-        public static void RebuildPrototypeAssets()
-        {
-            AssetDatabase.DeleteAsset(Root);
-            BuildAssets();
-        }
-
-        public static void EnsurePrototypeAssets()
+        public static void EnsureAssets()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
-            PrototypeGameConfig existing = AssetDatabase.LoadAssetAtPath<PrototypeGameConfig>(ConfigPath);
-            if (existing != null && existing.PrototypeVersion >= 2) return;
-            if (existing != null) AssetDatabase.DeleteAsset(Root);
-            BuildAssets();
+            PrototypeGameConfig config = AssetDatabase.LoadAssetAtPath<PrototypeGameConfig>(ConfigPath);
+            if (config == null || config.PrototypeVersion < 3) { if (config != null) AssetDatabase.DeleteAsset(Root); BuildData(); }
+            EnsureScene();
         }
 
-        private static void BuildAssets()
+        private static void BuildData()
         {
-            EnsureFolder("Assets", "LuminaRift");
-            EnsureFolder("Assets/LuminaRift", "Resources");
-            EnsureFolder(Root, "Characters");
-            EnsureFolder(Root, "Banners");
-
-            List<CharacterData> runtimeCharacters = PrototypeContent.CreateCharacters();
-            var characters = new List<CharacterData>();
-            foreach (CharacterData character in runtimeCharacters)
-            {
-                string path = Root + "/Characters/" + character.name + ".asset";
-                AssetDatabase.CreateAsset(character, path);
-                characters.Add(character);
-            }
-
-            List<BannerData> runtimeBanners = PrototypeContent.CreateBanners(characters);
-            var banners = new List<BannerData>();
-            foreach (BannerData banner in runtimeBanners)
-            {
-                string safeName = banner.name.Replace(" - ", "_").Replace(" ", "_");
-                AssetDatabase.CreateAsset(banner, Root + "/Banners/" + safeName + ".asset");
-                banners.Add(banner);
-            }
-
-            PrototypeGameConfig config = ScriptableObject.CreateInstance<PrototypeGameConfig>();
-            config.ConfigurePrototype(characters, banners);
-            AssetDatabase.CreateAsset(config, ConfigPath);
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            Debug.Log("Lumina Rift Prototype 0.0.2 data generated.");
+            Folder("Assets", "LuminaRift"); Folder("Assets/LuminaRift", "Resources"); Folder(Root, "Characters"); Folder(Root, "Banners");
+            List<CharacterData> characters = PrototypeContent.CreateCharacters();
+            foreach (CharacterData character in characters) AssetDatabase.CreateAsset(character, Root + "/Characters/" + character.name + ".asset");
+            List<BannerData> banners = PrototypeContent.CreateBanners(characters);
+            for (int i = 0; i < banners.Count; i++) AssetDatabase.CreateAsset(banners[i], Root + "/Banners/Banner" + i + ".asset");
+            PrototypeGameConfig config = ScriptableObject.CreateInstance<PrototypeGameConfig>(); config.Configure(characters, banners);
+            AssetDatabase.CreateAsset(config, ConfigPath); AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
         }
 
-        private static void EnsureFolder(string parent, string child)
+        private static void EnsureScene()
         {
-            string path = parent + "/" + child;
-            if (!AssetDatabase.IsValidFolder(path)) AssetDatabase.CreateFolder(parent, child);
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(ScenePath) == null)
+            {
+                Folder("Assets", "Scenes"); Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+                new GameObject("Main Camera", typeof(Camera)); EditorSceneManager.SaveScene(scene, ScenePath);
+            }
+            EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
         }
+
+        private static void Folder(string parent, string child) { string path = parent + "/" + child; if (!AssetDatabase.IsValidFolder(path)) AssetDatabase.CreateFolder(parent, child); }
     }
 }
 #endif

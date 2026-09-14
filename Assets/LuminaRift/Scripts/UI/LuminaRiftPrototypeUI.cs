@@ -1,500 +1,268 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
-using UnityEngine.UI;
 
 namespace LuminaRift
 {
     public sealed class LuminaRiftPrototypeUI : MonoBehaviour
     {
-        private sealed class BannerView
-        {
-            public BannerData Banner;
-            public Text Currency;
-            public Text Pity;
-            public Button SingleButton;
-            public Button TenButton;
-        }
-
-        private static readonly Color Background = new Color(0.025f, 0.032f, 0.07f);
-        private static readonly Color Panel = new Color(0.075f, 0.09f, 0.16f, 0.98f);
-        private static readonly Color Soft = new Color(0.13f, 0.15f, 0.25f, 0.98f);
-        private static readonly Color Blue = new Color(0.25f, 0.8f, 1f);
-        private static readonly Color Gold = new Color(1f, 0.72f, 0.25f);
-
+        private enum ScreenView { Main, Characters, Summon, Stats }
         private PrototypeGameConfig config;
         private LuminaRiftGameState state;
-        private Font font;
-        private Text creditsText;
-        private Text currencyText;
-        private Text messageText;
-        private RectTransform mainScreen;
-        private RectTransform rosterScreen;
-        private RectTransform summonScreen;
-        private Text mainCharacterName;
-        private Text mainCharacterStats;
-        private Image mainPortrait;
-        private Button levelButton;
-        private Text levelButtonText;
-        private Button ascendButton;
-        private Text ascendButtonText;
-        private readonly List<RectTransform> rosterCards = new List<RectTransform>();
-        private readonly List<BannerView> bannerViews = new List<BannerView>();
-        private RectTransform revealOverlay;
-        private Image revealGlow;
-        private Text revealRarity;
-        private Text revealName;
-        private Text revealStatus;
-        private RectTransform ascensionOverlay;
-        private Text ascensionConfirmText;
-        private bool presentingSummons;
-        private float passiveTickAccumulator;
+        private LocalSaveSystem saves;
+        private ScreenView screen;
+        private string message = "The Rift is open.";
+        private float autosaveTimer;
+        private double pendingOfflineCredits;
+        private double pendingOfflineSeconds;
+        private bool showOffline;
+        private bool showAscensionConfirm;
+        private bool showResetConfirm;
+        private List<GachaResult> revealResults;
+        private int revealIndex;
+        private float revealTimer;
+        private GUIStyle titleStyle, headingStyle, bodyStyle, centeredStyle, cardStyle, bigButtonStyle, smallStyle;
+        private bool stylesReady;
 
         public void Initialize(PrototypeGameConfig gameConfig)
         {
-            config = gameConfig;
-            state = new LuminaRiftGameState(config);
-            state.Changed += Refresh;
-            state.MessageRaised += ShowMessage;
-            BuildInterface();
-            ShowScreen(mainScreen);
-            ShowMessage("Prototype 0.0.2 ready. Build the run, collect Echoes, and push beyond level 50.");
-            Refresh();
-        }
-
-        private void OnDestroy()
-        {
-            if (state == null) return;
-            state.Changed -= Refresh;
-            state.MessageRaised -= ShowMessage;
+            config = gameConfig; state = new LuminaRiftGameState(config); saves = new LocalSaveSystem();
+            state.MessageRaised += value => message = value;
+            PlayerSaveData loaded = saves.Load();
+            if (loaded != null)
+            {
+                state.Restore(loaded);
+                pendingOfflineCredits = Math.Max(0, loaded.pendingOfflineCredits);
+                pendingOfflineSeconds = Math.Max(0, loaded.pendingOfflineSeconds);
+                if (loaded.lastSaveUtcTicks > 0 && loaded.lastSaveUtcTicks <= DateTime.UtcNow.Ticks)
+                {
+                    double elapsed = TimeSpan.FromTicks(DateTime.UtcNow.Ticks - loaded.lastSaveUtcTicks).TotalSeconds;
+                    double remainingCap = Math.Max(0, config.OfflineEarningsCapHours * 3600d - pendingOfflineSeconds);
+                    double capped = Math.Min(elapsed, remainingCap);
+                    pendingOfflineSeconds += capped;
+                    pendingOfflineCredits += state.PassiveIncomePerSecond * capped;
+                }
+                showOffline = pendingOfflineCredits > 0.01;
+                message = "Save loaded. Welcome back to the Rift.";
+            }
+            SaveNow();
         }
 
         private void Update()
         {
-            if (state == null) return;
-            passiveTickAccumulator += Time.unscaledDeltaTime;
-            if (passiveTickAccumulator < 0.1f) return;
-            state.TickPassive(passiveTickAccumulator);
-            passiveTickAccumulator = 0f;
+            float delta = Time.unscaledDeltaTime; state.Tick(delta); autosaveTimer += delta;
+            if (autosaveTimer >= 10f) { SaveNow(); autosaveTimer = 0; }
+            if (revealResults != null)
+            {
+                revealTimer -= delta;
+                if (revealTimer <= 0)
+                {
+                    revealIndex++;
+                    if (revealIndex >= revealResults.Count) revealResults = null;
+                    else revealTimer = RevealDuration(revealResults[revealIndex]);
+                }
+            }
         }
 
-        private void BuildInterface()
+        private void OnApplicationPause(bool paused) { if (paused) SaveNow(); }
+        private void OnApplicationQuit() { SaveNow(); }
+        private void OnDestroy() { if (saves != null && state != null) SaveNow(); }
+
+        private void SaveNow()
         {
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            EnsureEventSystem();
-            Canvas canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 100;
-            CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1280f, 720f);
-            scaler.matchWidthOrHeight = 0.5f;
-            gameObject.AddComponent<GraphicRaycaster>();
-            Image background = CreateImage("Background", transform, Background);
-            Stretch(background.rectTransform, 0, 0, 0, 0);
-            BuildHeader();
-            BuildNavigation();
-            BuildMainScreen();
-            BuildRosterScreen();
-            BuildSummonScreen();
-            BuildRevealOverlay();
-            BuildAscensionOverlay();
+            if (saves != null && state != null) saves.Save(state.CreateSave(pendingOfflineCredits, pendingOfflineSeconds));
         }
 
-        private void BuildHeader()
+        private void OnGUI()
         {
-            RectTransform header = CreatePanel("Header", transform, Panel);
-            SetRect(header, new Vector2(0, 1), new Vector2(1, 1), new Vector2(20, -78), new Vector2(-20, -12));
-            Text title = CreateText("Title", header, "LUMINA RIFT  <size=15>PROTOTYPE 0.0.2</size>", 28, FontStyle.Bold, Blue, TextAnchor.MiddleLeft);
-            SetRect(title.rectTransform, new Vector2(0.02f, 0), new Vector2(0.4f, 1), Vector2.zero, Vector2.zero);
-            creditsText = CreateText("Credits", header, string.Empty, 22, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            SetRect(creditsText.rectTransform, new Vector2(0.38f, 0), new Vector2(0.68f, 1), Vector2.zero, Vector2.zero);
-            currencyText = CreateText("Currency", header, string.Empty, 17, FontStyle.Normal, Gold, TextAnchor.MiddleRight);
-            SetRect(currencyText.rectTransform, new Vector2(0.66f, 0), new Vector2(0.98f, 1), Vector2.zero, Vector2.zero);
+            EnsureStyles();
+            float scale = Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
+            Matrix4x4 previous = GUI.matrix; GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1));
+            float width = Screen.width / scale; float height = Screen.height / scale;
+            DrawBackground(new Rect(0, 0, width, height), new Color(.025f, .032f, .07f));
+            DrawHeader(width); DrawNavigation(width, height);
+            Rect content = new Rect(24, 92, width - 48, height - 190);
+            if (screen == ScreenView.Main) DrawMain(content);
+            else if (screen == ScreenView.Characters) DrawCharacters(content);
+            else if (screen == ScreenView.Summon) DrawSummon(content);
+            else DrawStats(content);
+            GUI.Label(new Rect(30, height - 46, width - 60, 22), message, smallStyle);
+            if (showOffline) DrawOfflineOverlay(width, height);
+            else if (showAscensionConfirm) DrawAscensionOverlay(width, height);
+            else if (showResetConfirm) DrawResetOverlay(width, height);
+            else if (revealResults != null) DrawReveal(width, height);
+            GUI.matrix = previous;
         }
 
-        private void BuildNavigation()
+        private void DrawHeader(float width)
         {
-            RectTransform navigation = CreatePanel("Navigation", transform, Panel);
-            SetRect(navigation, new Vector2(0, 0), new Vector2(1, 0), new Vector2(20, 12), new Vector2(-20, 69));
-            AddNavButton(navigation, "MAIN", 0.02f, delegate { ShowScreen(mainScreen); });
-            AddNavButton(navigation, "CHARACTERS", 0.35f, delegate { ShowScreen(rosterScreen); });
-            AddNavButton(navigation, "SUMMON", 0.68f, delegate { ShowScreen(summonScreen); });
-            messageText = CreateText("Message", navigation, string.Empty, 13, FontStyle.Italic, new Color(0.75f, 0.8f, 0.9f), TextAnchor.MiddleCenter);
-            SetRect(messageText.rectTransform, new Vector2(0, 0.02f), new Vector2(1, 0.32f), Vector2.zero, Vector2.zero);
+            DrawBackground(new Rect(18, 12, width - 36, 64), new Color(.075f, .09f, .16f));
+            GUI.Label(new Rect(38, 20, 420, 46), "LUMINA RIFT  <size=15>PROTOTYPE 0.0.3</size>", titleStyle);
+            GUI.Label(new Rect(450, 20, 300, 42), "CREDITS  " + Number(state.Credits), headingStyle);
+            GUI.Label(new Rect(width - 485, 20, 445, 42), "TICKETS " + state.StandardTickets + "   LUMINA " + state.Lumina + "   RANK " + state.RiftRank, headingStyle);
         }
 
-        private void AddNavButton(Transform parent, string label, float left, UnityEngine.Events.UnityAction action)
+        private void DrawNavigation(float width, float height)
         {
-            Text text;
-            Button button = CreateButton(label, parent, Soft, action, out text);
-            SetRect(button.GetComponent<RectTransform>(), new Vector2(left, 0.36f), new Vector2(left + 0.3f, 0.94f), Vector2.zero, Vector2.zero);
+            float y = height - 91; float buttonWidth = (width - 70) / 4f;
+            if (GUI.Button(new Rect(22, y, buttonWidth, 38), "MAIN", bigButtonStyle)) screen = ScreenView.Main;
+            if (GUI.Button(new Rect(30 + buttonWidth, y, buttonWidth, 38), "CHARACTERS", bigButtonStyle)) screen = ScreenView.Characters;
+            if (GUI.Button(new Rect(38 + buttonWidth * 2, y, buttonWidth, 38), "SUMMON", bigButtonStyle)) screen = ScreenView.Summon;
+            if (GUI.Button(new Rect(46 + buttonWidth * 3, y, buttonWidth, 38), "RIFT RECORD", bigButtonStyle)) screen = ScreenView.Stats;
         }
 
-        private void BuildMainScreen()
+        private void DrawMain(Rect area)
         {
-            mainScreen = CreatePanel("MainScreen", transform, Color.clear);
-            SetRect(mainScreen, new Vector2(0, 0), new Vector2(1, 1), new Vector2(20, 82), new Vector2(-20, -90));
-            RectTransform hero = CreatePanel("ActiveEcho", mainScreen, Panel);
-            SetRect(hero, new Vector2(0, 0), new Vector2(0.62f, 1), Vector2.zero, new Vector2(-8, 0));
-            mainPortrait = CreateImage("Portrait", hero, Blue);
-            SetRect(mainPortrait.rectTransform, new Vector2(0.045f, 0.30f), new Vector2(0.43f, 0.91f), Vector2.zero, Vector2.zero);
-            Button tap = mainPortrait.gameObject.AddComponent<Button>();
-            tap.targetGraphic = mainPortrait;
-            tap.onClick.AddListener(state.EarnClick);
-            Text tapText = CreateText("Tap", mainPortrait.transform, "TAP ECHO\n+ CREDITS", 27, FontStyle.Bold, Background, TextAnchor.MiddleCenter);
-            Stretch(tapText.rectTransform, 8, 8, 8, 8);
-            mainCharacterName = CreateText("Name", hero, string.Empty, 29, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
-            SetRect(mainCharacterName.rectTransform, new Vector2(0.47f, 0.75f), new Vector2(0.96f, 0.92f), Vector2.zero, Vector2.zero);
-            mainCharacterStats = CreateText("Stats", hero, string.Empty, 17, FontStyle.Normal, new Color(0.82f, 0.85f, 0.94f), TextAnchor.UpperLeft);
-            SetRect(mainCharacterStats.rectTransform, new Vector2(0.47f, 0.28f), new Vector2(0.96f, 0.75f), Vector2.zero, Vector2.zero);
-            levelButton = CreateButton("Level", hero, Soft, OnLevel, out levelButtonText);
-            SetRect(levelButton.GetComponent<RectTransform>(), new Vector2(0.045f, 0.07f), new Vector2(0.61f, 0.24f), Vector2.zero, Vector2.zero);
-            ascendButton = CreateButton("Ascend", hero, Gold, OpenAscensionConfirmation, out ascendButtonText);
-            SetRect(ascendButton.GetComponent<RectTransform>(), new Vector2(0.65f, 0.07f), new Vector2(0.955f, 0.24f), Vector2.zero, Vector2.zero);
+            CharacterRuntimeState active = state.ActiveCharacter; CharacterData data = active.Definition;
+            Rect left = new Rect(area.x, area.y, area.width * .61f, area.height); Rect right = new Rect(left.xMax + 14, area.y, area.width - left.width - 14, area.height);
+            GUI.Box(left, GUIContent.none, cardStyle); GUI.Box(right, GUIContent.none, cardStyle);
+            GUI.backgroundColor = data.AccentColor;
+            if (GUI.Button(new Rect(left.x + 28, left.y + 66, 280, 285), "<size=34>TAP ECHO</size>\n\n+" + Number(state.ClickIncome) + " CREDITS", bigButtonStyle)) state.EarnClick();
+            GUI.backgroundColor = Color.white;
+            GUI.Label(new Rect(left.x + 340, left.y + 34, left.width - 370, 50), Stars(data.Rarity) + "  " + data.DisplayName, headingStyle);
+            int affinityRank = state.GetAffinityRank(active);
+            GUI.Label(new Rect(left.x + 340, left.y + 92, left.width - 370, 210),
+                "LEVEL " + active.Level + " / " + config.RunLevelCap + "\nAffinity " + Roman(affinityRank) + "  •  " + active.AffinityXp + " XP\n\n+" + Number(state.PassiveIncomePerSecond) + " Credits / sec\nIncome Power ×" + state.AscensionMultiplier.ToString("0.00") + "\n\n" + data.Description, bodyStyle);
+            float by = left.yMax - 92; float bw = (left.width - 70) / 4;
+            if (GUI.Button(new Rect(left.x + 20, by, bw, 60), "LEVEL x1\n" + Number(state.NextLevelCost), bigButtonStyle)) state.BuyLevels(1);
+            GUI.enabled = state.LevelTenUnlocked;
+            if (GUI.Button(new Rect(left.x + 30 + bw, by, bw, 60), state.LevelTenUnlocked ? "LEVEL x10" : "x10\nASCENSION 2", bigButtonStyle)) state.BuyLevels(10);
+            if (GUI.Button(new Rect(left.x + 40 + bw * 2, by, bw, 60), state.LevelTenUnlocked ? "LEVEL x25" : "x25\nASCENSION 2", bigButtonStyle)) state.BuyLevels(25);
+            GUI.enabled = state.LevelMaxUnlocked;
+            if (GUI.Button(new Rect(left.x + 50 + bw * 3, by, bw, 60), state.LevelMaxUnlocked ? "LEVEL MAX" : "MAX\nASCENSION 3", bigButtonStyle)) state.BuyLevels(int.MaxValue);
+            GUI.enabled = true;
 
-            RectTransform guide = CreatePanel("RunGuide", mainScreen, Panel);
-            SetRect(guide, new Vector2(0.62f, 0), new Vector2(1, 1), new Vector2(8, 0), Vector2.zero);
-            Text guideTitle = CreateText("GuideTitle", guide, "RUN PROGRESSION", 24, FontStyle.Bold, Gold, TextAnchor.MiddleCenter);
-            SetRect(guideTitle.rectTransform, new Vector2(0.05f, 0.82f), new Vector2(0.95f, 0.96f), Vector2.zero, Vector2.zero);
-            Text guideBody = CreateText("Guide", guide,
-                "MILESTONES\nLv.10  x2 income  +2 tickets\nLv.25  x2 income  +4 tickets\nLv.50  x3 income  +10 tickets\nLv.75  x1.75 income  +5 tickets\nLv.100  x2 income  +10 tickets\n\nASCENSION\nAvailable at Lv.50. Every extra level grants +20 Lumina. Every 10 extra levels grants +1 additional Power.",
-                17, FontStyle.Normal, new Color(0.78f, 0.83f, 0.94f), TextAnchor.UpperLeft);
-            SetRect(guideBody.rectTransform, new Vector2(0.09f, 0.12f), new Vector2(0.91f, 0.81f), Vector2.zero, Vector2.zero);
+            GUI.Label(new Rect(right.x + 26, right.y + 22, right.width - 52, 42), "RIFT RANK " + state.RiftRank, titleStyle);
+            GUI.Label(new Rect(right.x + 26, right.y + 72, right.width - 52, 205),
+                "Ascensions: " + state.AscensionCount + "\nPermanent Income: ×" + state.AscensionMultiplier.ToString("0.00") + "\n\n" + UnlockLine(state.LevelTenUnlocked, "Level x10 / x25") + "\n" + UnlockLine(state.LevelMaxUnlocked, "Level MAX") + "\n" + UnlockLine(state.AutoLevelUnlocked, "Auto-Level") + "\n" + UnlockLine(state.StartingLevelUnlocked, "Runs start at Lv." + config.PermanentStartingLevel), bodyStyle);
+            GUI.enabled = state.AutoLevelUnlocked;
+            if (GUI.Button(new Rect(right.x + 28, right.y + 280, right.width - 56, 54), state.AutoLevelEnabled ? "AUTO-LEVEL: ON" : state.AutoLevelUnlocked ? "AUTO-LEVEL: OFF" : "AUTO-LEVEL • ASCENSION 5", bigButtonStyle)) state.SetAutoLevel(!state.AutoLevelEnabled);
+            GUI.enabled = state.CanAscend;
+            AscensionReward reward = state.ProjectedAscensionReward;
+            if (GUI.Button(new Rect(right.x + 28, right.y + 350, right.width - 56, 68), state.CanAscend ? "ASCEND\n+" + reward.Lumina + " LUMINA  •  +" + reward.Power + " POWER" : "ASCEND AT LEVEL " + config.AscensionMinimumLevel, bigButtonStyle)) showAscensionConfirm = true;
+            GUI.enabled = true;
+            if (GUI.Button(new Rect(right.x + 28, right.yMax - 58, right.width - 56, 34), "DEVELOPER: RESET SAVE", bigButtonStyle)) showResetConfirm = true;
         }
 
-        private void BuildRosterScreen()
+        private void DrawCharacters(Rect area)
         {
-            rosterScreen = CreatePanel("RosterScreen", transform, Color.clear);
-            SetRect(rosterScreen, new Vector2(0, 0), new Vector2(1, 1), new Vector2(20, 82), new Vector2(-20, -90));
-            Text heading = CreateText("Heading", rosterScreen, "CHARACTER COLLECTION", 25, FontStyle.Bold, Blue, TextAnchor.MiddleLeft);
-            SetRect(heading.rectTransform, new Vector2(0.015f, 0.88f), new Vector2(0.6f, 1), Vector2.zero, Vector2.zero);
-            Text hint = CreateText("Hint", rosterScreen, "Select any unlocked Echo to make them active. Summoned Echoes are never auto-equipped.", 15, FontStyle.Normal, Color.white, TextAnchor.MiddleRight);
-            SetRect(hint.rectTransform, new Vector2(0.45f, 0.88f), new Vector2(0.985f, 1), Vector2.zero, Vector2.zero);
+            GUI.Label(new Rect(area.x + 8, area.y, 500, 38), "CHARACTER COLLECTION", titleStyle);
             for (int i = 0; i < state.Roster.Count; i++)
             {
-                int column = i % 3;
-                int row = i / 3;
-                float left = 0.015f + column * 0.33f;
-                float right = left + 0.31f;
-                float top = 0.85f - row * 0.42f;
-                RectTransform card = CreatePanel("RosterCard" + i, rosterScreen, Soft);
-                SetRect(card, new Vector2(left, top - 0.37f), new Vector2(right, top), Vector2.zero, Vector2.zero);
-                rosterCards.Add(card);
-                CharacterRuntimeState captured = state.Roster[i];
-                Button select = card.gameObject.AddComponent<Button>();
-                select.targetGraphic = card.GetComponent<Image>();
-                select.onClick.AddListener(delegate { state.SetActiveCharacter(captured); });
-                CreateRosterCardContents(card);
+                CharacterRuntimeState character = state.Roster[i]; int col = i % 3; int row = i / 3;
+                Rect card = new Rect(area.x + col * (area.width / 3), area.y + 55 + row * 220, area.width / 3 - 12, 202);
+                GUI.backgroundColor = character == state.ActiveCharacter ? character.Definition.AccentColor : Color.white;
+                GUI.Box(card, GUIContent.none, cardStyle); GUI.backgroundColor = Color.white;
+                string name = character.IsOwned ? character.Definition.DisplayName : "LOCKED ECHO";
+                string details = character.IsOwned ? Stars(character.Definition.Rarity) + "\nRun Level " + character.Level + "\nAffinity " + Roman(state.GetAffinityRank(character)) + "  •  " + character.AffinityXp + " XP\n" + RarityRole(character.Definition.Rarity) : "? ? ?\nSummon to unlock";
+                GUI.Label(new Rect(card.x + 18, card.y + 15, card.width - 36, 34), name, headingStyle);
+                GUI.Label(new Rect(card.x + 18, card.y + 52, card.width - 36, 100), details, bodyStyle);
+                GUI.enabled = character.IsOwned && character != state.ActiveCharacter;
+                if (GUI.Button(new Rect(card.x + 18, card.yMax - 44, card.width - 36, 30), character == state.ActiveCharacter ? "ACTIVE ECHO" : "SET ACTIVE", bigButtonStyle)) state.SetActiveCharacter(character);
+                GUI.enabled = true;
             }
         }
 
-        private void CreateRosterCardContents(RectTransform card)
+        private void DrawSummon(Rect area)
         {
-            Image portrait = CreateImage("CardPortrait", card, Blue);
-            SetRect(portrait.rectTransform, new Vector2(0.05f, 0.18f), new Vector2(0.34f, 0.84f), Vector2.zero, Vector2.zero);
-            Text lockText = CreateText("Lock", portrait.transform, "", 32, FontStyle.Bold, Background, TextAnchor.MiddleCenter);
-            Stretch(lockText.rectTransform, 2, 2, 2, 2);
-            Text name = CreateText("CardName", card, string.Empty, 20, FontStyle.Bold, Color.white, TextAnchor.MiddleLeft);
-            SetRect(name.rectTransform, new Vector2(0.39f, 0.66f), new Vector2(0.95f, 0.9f), Vector2.zero, Vector2.zero);
-            Text info = CreateText("CardInfo", card, string.Empty, 15, FontStyle.Normal, Color.white, TextAnchor.UpperLeft);
-            SetRect(info.rectTransform, new Vector2(0.39f, 0.19f), new Vector2(0.95f, 0.67f), Vector2.zero, Vector2.zero);
-            Text active = CreateText("Active", card, "", 13, FontStyle.Bold, Gold, TextAnchor.MiddleCenter);
-            SetRect(active.rectTransform, new Vector2(0.05f, 0.02f), new Vector2(0.95f, 0.17f), Vector2.zero, Vector2.zero);
-        }
-
-        private void BuildSummonScreen()
-        {
-            summonScreen = CreatePanel("SummonScreen", transform, Color.clear);
-            SetRect(summonScreen, new Vector2(0, 0), new Vector2(1, 1), new Vector2(20, 82), new Vector2(-20, -90));
             for (int i = 0; i < state.Banners.Count; i++)
             {
-                BannerData banner = state.Banners[i];
-                float left = i == 0 ? 0f : 0.505f;
-                float right = i == 0 ? 0.495f : 1f;
-                RectTransform card = CreatePanel("Banner" + i, summonScreen, Panel);
-                SetRect(card, new Vector2(left, 0), new Vector2(right, 1), Vector2.zero, Vector2.zero);
-                Image accent = CreateImage("Accent", card, banner.AccentColor);
-                SetRect(accent.rectTransform, new Vector2(0, 0.91f), new Vector2(1, 1), Vector2.zero, Vector2.zero);
-                Text name = CreateText("BannerName", card, banner.DisplayName, 26, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-                SetRect(name.rectTransform, new Vector2(0.05f, 0.77f), new Vector2(0.95f, 0.91f), Vector2.zero, Vector2.zero);
-                Text description = CreateText("Description", card, banner.Description, 16, FontStyle.Normal, new Color(0.82f, 0.85f, 0.95f), TextAnchor.MiddleCenter);
-                SetRect(description.rectTransform, new Vector2(0.08f, 0.63f), new Vector2(0.92f, 0.77f), Vector2.zero, Vector2.zero);
-                Text rates = CreateText("Rates", card, "3★ 75%   •   4★ 20%   •   5★ 5%\n10-pull: guaranteed 4★+   •   Hard pity: 30", 15, FontStyle.Normal, Gold, TextAnchor.MiddleCenter);
-                SetRect(rates.rectTransform, new Vector2(0.05f, 0.50f), new Vector2(0.95f, 0.63f), Vector2.zero, Vector2.zero);
-                string pool = string.Join("  •  ", banner.CharacterPool.Select(item => item.DisplayName + " " + StarText(item.Rarity)));
-                Text poolText = CreateText("Pool", card, "AVAILABLE ECHOES\n" + pool, 14, FontStyle.Normal, new Color(0.7f, 0.78f, 0.9f), TextAnchor.UpperCenter);
-                SetRect(poolText.rectTransform, new Vector2(0.07f, 0.33f), new Vector2(0.93f, 0.49f), Vector2.zero, Vector2.zero);
-                BannerView view = new BannerView { Banner = banner };
-                view.Currency = CreateText("Owned", card, string.Empty, 17, FontStyle.Bold, Blue, TextAnchor.MiddleCenter);
-                SetRect(view.Currency.rectTransform, new Vector2(0.08f, 0.24f), new Vector2(0.55f, 0.33f), Vector2.zero, Vector2.zero);
-                view.Pity = CreateText("Pity", card, string.Empty, 15, FontStyle.Normal, Color.white, TextAnchor.MiddleCenter);
-                SetRect(view.Pity.rectTransform, new Vector2(0.55f, 0.24f), new Vector2(0.92f, 0.33f), Vector2.zero, Vector2.zero);
-                Text singleLabel;
-                view.SingleButton = CreateButton("Single", card, banner.AccentColor, delegate { StartSummon(banner, 1); }, out singleLabel);
-                SetRect(view.SingleButton.GetComponent<RectTransform>(), new Vector2(0.07f, 0.06f), new Vector2(0.47f, 0.21f), Vector2.zero, Vector2.zero);
-                singleLabel.text = "SUMMON x1\n" + banner.SinglePullCost + " " + CurrencyName(banner);
-                Text tenLabel;
-                view.TenButton = CreateButton("Ten", card, banner.AccentColor, delegate { StartSummon(banner, 10); }, out tenLabel);
-                SetRect(view.TenButton.GetComponent<RectTransform>(), new Vector2(0.53f, 0.06f), new Vector2(0.93f, 0.21f), Vector2.zero, Vector2.zero);
-                tenLabel.text = "SUMMON x10\n" + banner.TenPullCost + " " + CurrencyName(banner);
-                bannerViews.Add(view);
+                BannerData banner = state.Banners[i]; Rect card = new Rect(area.x + i * (area.width / 2), area.y, area.width / 2 - 10, area.height);
+                GUI.backgroundColor = banner.AccentColor; GUI.Box(card, GUIContent.none, cardStyle); GUI.backgroundColor = Color.white;
+                GUI.Label(new Rect(card.x + 24, card.y + 22, card.width - 48, 42), banner.DisplayName, titleStyle);
+                GUI.Label(new Rect(card.x + 30, card.y + 72, card.width - 60, 62), banner.Description, centeredStyle);
+                GUI.Label(new Rect(card.x + 30, card.y + 140, card.width - 60, 100), "3★ 75%   •   4★ 20%   •   5★ 5%\n10-pull guarantees 4★+\n5★ Pity: " + state.GetPity(banner) + " / " + banner.HardPity, centeredStyle);
+                GUI.Label(new Rect(card.x + 28, card.y + 245, card.width - 56, 95), "AVAILABLE\n" + string.Join("  •  ", banner.CharacterPool.Select(value => value.DisplayName)), centeredStyle);
+                string currency = banner.Currency == BannerCurrency.Lumina ? "Lumina" : "Tickets";
+                GUI.Label(new Rect(card.x + 28, card.y + 347, card.width - 56, 35), "OWNED: " + state.CurrencyFor(banner) + " " + currency, headingStyle);
+                GUI.enabled = revealResults == null && state.CurrencyFor(banner) >= banner.SinglePullCost;
+                if (GUI.Button(new Rect(card.x + 30, card.yMax - 80, card.width / 2 - 40, 52), "SUMMON x1\n" + banner.SinglePullCost + " " + currency, bigButtonStyle)) BeginSummon(banner, 1);
+                GUI.enabled = revealResults == null && state.CurrencyFor(banner) >= banner.TenPullCost;
+                if (GUI.Button(new Rect(card.x + card.width / 2 + 10, card.yMax - 80, card.width / 2 - 40, 52), "SUMMON x10\n" + banner.TenPullCost + " " + currency, bigButtonStyle)) BeginSummon(banner, 10);
+                GUI.enabled = true;
             }
         }
 
-        private void BuildRevealOverlay()
+        private void DrawStats(Rect area)
         {
-            revealOverlay = CreatePanel("SummonReveal", transform, new Color(0.01f, 0.015f, 0.04f, 0.985f));
-            Stretch(revealOverlay, 0, 0, 0, 0);
-            revealGlow = CreateImage("RiftGlow", revealOverlay, Blue);
-            SetRect(revealGlow.rectTransform, new Vector2(0.31f, 0.17f), new Vector2(0.69f, 0.83f), Vector2.zero, Vector2.zero);
-            revealRarity = CreateText("Rarity", revealGlow.transform, string.Empty, 38, FontStyle.Bold, Background, TextAnchor.MiddleCenter);
-            SetRect(revealRarity.rectTransform, new Vector2(0, 0.63f), new Vector2(1, 0.88f), Vector2.zero, Vector2.zero);
-            revealName = CreateText("Name", revealGlow.transform, string.Empty, 34, FontStyle.Bold, Background, TextAnchor.MiddleCenter);
-            SetRect(revealName.rectTransform, new Vector2(0, 0.35f), new Vector2(1, 0.64f), Vector2.zero, Vector2.zero);
-            revealStatus = CreateText("Status", revealGlow.transform, string.Empty, 21, FontStyle.Bold, Background, TextAnchor.MiddleCenter);
-            SetRect(revealStatus.rectTransform, new Vector2(0.04f, 0.08f), new Vector2(0.96f, 0.35f), Vector2.zero, Vector2.zero);
-            revealOverlay.gameObject.SetActive(false);
+            TelemetrySaveData t = state.Telemetry; GUI.Box(area, GUIContent.none, cardStyle);
+            GUI.Label(new Rect(area.x + 30, area.y + 24, area.width - 60, 45), "RIFT RECORD • LOCAL PROTOTYPE TELEMETRY", titleStyle);
+            GUI.Label(new Rect(area.x + 55, area.y + 90, area.width * .45f, area.height - 120),
+                "Current Run Time\n" + Duration(t.currentRunSeconds) + "\n\nLifetime Play Time\n" + Duration(t.lifetimePlaySeconds) + "\n\nLast Ascension Run\n" + Duration(t.lastAscensionRunSeconds) + "\n\nAscensions\n" + state.AscensionCount, headingStyle);
+            GUI.Label(new Rect(area.x + area.width * .52f, area.y + 90, area.width * .42f, area.height - 120),
+                "Highest Level Reached\n" + t.highestLevelReached + "\n\nTotal Pulls / 5★ Pulls\n" + t.totalPulls + " / " + t.fiveStarPulls + "\n\nTotal Clicks\n" + t.totalClicks + "\n\nLifetime Credits\n" + Number(t.lifetimeCreditsEarned), headingStyle);
         }
 
-        private void BuildAscensionOverlay()
+        private void DrawOfflineOverlay(float width, float height)
         {
-            ascensionOverlay = CreatePanel("AscensionConfirmation", transform, new Color(0.01f, 0.015f, 0.04f, 0.96f));
-            Stretch(ascensionOverlay, 0, 0, 0, 0);
-            RectTransform dialog = CreatePanel("Dialog", ascensionOverlay, Panel);
-            SetRect(dialog, new Vector2(0.29f, 0.25f), new Vector2(0.71f, 0.75f), Vector2.zero, Vector2.zero);
-            Text title = CreateText("Title", dialog, "ASCEND THIS RUN?", 28, FontStyle.Bold, Gold, TextAnchor.MiddleCenter);
-            SetRect(title.rectTransform, new Vector2(0.06f, 0.76f), new Vector2(0.94f, 0.94f), Vector2.zero, Vector2.zero);
-            ascensionConfirmText = CreateText("Reward", dialog, string.Empty, 18, FontStyle.Normal, Color.white, TextAnchor.MiddleCenter);
-            SetRect(ascensionConfirmText.rectTransform, new Vector2(0.08f, 0.28f), new Vector2(0.92f, 0.76f), Vector2.zero, Vector2.zero);
-            Text cancelText;
-            Button cancel = CreateButton("Cancel", dialog, Soft, delegate { ascensionOverlay.gameObject.SetActive(false); }, out cancelText);
-            SetRect(cancel.GetComponent<RectTransform>(), new Vector2(0.08f, 0.07f), new Vector2(0.46f, 0.24f), Vector2.zero, Vector2.zero);
-            Text confirmText;
-            Button confirm = CreateButton("Confirm", dialog, Gold, ConfirmAscension, out confirmText);
-            SetRect(confirm.GetComponent<RectTransform>(), new Vector2(0.54f, 0.07f), new Vector2(0.92f, 0.24f), Vector2.zero, Vector2.zero);
-            ascensionOverlay.gameObject.SetActive(false);
+            DrawModalShade(width, height); Rect box = new Rect(width / 2 - 280, height / 2 - 190, 560, 380); GUI.Box(box, GUIContent.none, cardStyle);
+            GUI.Label(new Rect(box.x + 30, box.y + 32, box.width - 60, 50), "WELCOME BACK", titleStyle);
+            GUI.Label(new Rect(box.x + 45, box.y + 100, box.width - 90, 130), "You were away for " + Duration(pendingOfflineSeconds) + ".\n\nEarned\n<size=30>" + Number(pendingOfflineCredits) + " Credits</size>\n\nOffline earnings are capped at " + config.OfflineEarningsCapHours + " hours.", centeredStyle);
+            if (GUI.Button(new Rect(box.x + 95, box.yMax - 82, box.width - 190, 52), "COLLECT", bigButtonStyle))
+            { state.CollectOfflineCredits(pendingOfflineCredits); pendingOfflineCredits = 0; pendingOfflineSeconds = 0; showOffline = false; SaveNow(); }
         }
 
-        private void OnLevel()
+        private void DrawAscensionOverlay(float width, float height)
         {
-            if (!state.TryLevelActiveCharacter()) ShowMessage("Earn more Credits before levelling.");
-        }
-
-        private void OpenAscensionConfirmation()
-        {
-            if (!state.CanAscend) return;
+            DrawModalShade(width, height); Rect box = new Rect(width / 2 - 300, height / 2 - 175, 600, 350); GUI.Box(box, GUIContent.none, cardStyle);
             AscensionReward reward = state.ProjectedAscensionReward;
-            ascensionConfirmText.text = "PROJECTED REWARD\n\n+" + reward.Lumina + " Lumina\n+" + reward.Power + " Ascension Power\n\nResets Credits, run levels, and milestone claims.\nKeeps collection, Affinity, currencies, and banner pity.";
-            ascensionOverlay.gameObject.SetActive(true);
+            GUI.Label(new Rect(box.x + 30, box.y + 30, box.width - 60, 45), "ASCEND THIS RUN?", titleStyle);
+            GUI.Label(new Rect(box.x + 45, box.y + 90, box.width - 90, 125), "+" + reward.Lumina + " Lumina   •   +" + reward.Power + " Rift Power\n\nResets Credits, run levels, and milestone claims.\nKeeps collection, Affinity, currencies, pity, and telemetry.", centeredStyle);
+            if (GUI.Button(new Rect(box.x + 55, box.yMax - 75, 220, 44), "CANCEL", bigButtonStyle)) showAscensionConfirm = false;
+            if (GUI.Button(new Rect(box.xMax - 275, box.yMax - 75, 220, 44), "ASCEND", bigButtonStyle)) { showAscensionConfirm = false; state.TryAscend(); SaveNow(); }
         }
 
-        private void ConfirmAscension()
+        private void DrawResetOverlay(float width, float height)
         {
-            ascensionOverlay.gameObject.SetActive(false);
-            state.TryAscend();
-            ShowScreen(mainScreen);
+            DrawModalShade(width, height); Rect box = new Rect(width / 2 - 285, height / 2 - 150, 570, 300); GUI.Box(box, GUIContent.none, cardStyle);
+            GUI.Label(new Rect(box.x + 30, box.y + 28, box.width - 60, 42), "RESET LOCAL SAVE?", titleStyle);
+            GUI.Label(new Rect(box.x + 45, box.y + 90, box.width - 90, 70), "This clears the current run, collection, pity, Rift Rank, and local telemetry.", centeredStyle);
+            if (GUI.Button(new Rect(box.x + 45, box.yMax - 72, 220, 42), "CANCEL", bigButtonStyle)) showResetConfirm = false;
+            if (GUI.Button(new Rect(box.xMax - 265, box.yMax - 72, 220, 42), "RESET SAVE", bigButtonStyle))
+            { showResetConfirm = false; saves.Delete(); pendingOfflineCredits = 0; pendingOfflineSeconds = 0; state.ResetAllProgress(); SaveNow(); }
         }
 
-        private void StartSummon(BannerData banner, int count)
+        private void DrawReveal(float width, float height)
         {
-            if (presentingSummons) return;
-            List<GachaResult> results;
-            if (!state.TrySummon(banner, count, out results))
-            {
-                ShowMessage("Not enough " + CurrencyName(banner) + " for that summon.");
-                return;
-            }
-            StartCoroutine(PresentResults(results));
+            DrawModalShade(width, height); GachaResult result = revealResults[revealIndex]; int stars = (int)result.Character.Definition.Rarity;
+            float pulse = .85f + Mathf.PingPong(Time.unscaledTime * .7f, .15f); float cardWidth = 400 * pulse; float cardHeight = 430 * pulse;
+            GUI.backgroundColor = stars == 5 ? new Color(1f,.72f,.2f) : stars == 4 ? new Color(.7f,.4f,1f) : new Color(.3f,.65f,1f);
+            Rect card = new Rect(width / 2 - cardWidth / 2, height / 2 - cardHeight / 2, cardWidth, cardHeight); GUI.Box(card, GUIContent.none, cardStyle); GUI.backgroundColor = Color.white;
+            GUI.Label(new Rect(card.x + 20, card.y + 55, card.width - 40, 55), Stars(result.Character.Definition.Rarity), titleStyle);
+            GUI.Label(new Rect(card.x + 20, card.y + 140, card.width - 40, 55), result.Character.Definition.DisplayName, titleStyle);
+            GUI.Label(new Rect(card.x + 25, card.y + 230, card.width - 50, 95), result.WasDuplicate ? "DUPLICATE\n+" + result.AffinityAwarded + " AFFINITY XP" : "NEW!", centeredStyle);
+            GUI.Label(new Rect(card.x + 20, card.yMax - 45, card.width - 40, 25), (revealIndex + 1) + " / " + revealResults.Count, centeredStyle);
         }
 
-        private IEnumerator PresentResults(IReadOnlyList<GachaResult> results)
+        private void BeginSummon(BannerData banner, int count)
         {
-            presentingSummons = true;
-            revealOverlay.gameObject.SetActive(true);
-            for (int i = 0; i < results.Count; i++)
-            {
-                GachaResult result = results[i];
-                int stars = (int)result.Character.Definition.Rarity;
-                Color rarityColor = stars == 5 ? Gold : stars == 4 ? new Color(0.72f, 0.4f, 1f) : new Color(0.32f, 0.7f, 1f);
-                revealGlow.color = Color.white;
-                revealGlow.rectTransform.localScale = Vector3.one * 0.15f;
-                revealRarity.text = "RIFT OPENING";
-                revealName.text = string.Empty;
-                revealStatus.text = results.Count > 1 ? (i + 1) + " / " + results.Count : string.Empty;
-                float duration = stars == 5 ? 0.7f : 0.35f;
-                float elapsed = 0f;
-                while (elapsed < duration)
-                {
-                    elapsed += Time.unscaledDeltaTime;
-                    float t = Mathf.Clamp01(elapsed / duration);
-                    revealGlow.rectTransform.localScale = Vector3.one * Mathf.SmoothStep(0.15f, stars == 5 ? 1.08f : 1f, t);
-                    revealGlow.color = Color.Lerp(Color.white, rarityColor, t);
-                    yield return null;
-                }
-                revealGlow.rectTransform.localScale = Vector3.one;
-                revealRarity.text = StarText(result.Character.Definition.Rarity);
-                revealName.text = result.Character.Definition.DisplayName;
-                revealStatus.text = (result.WasDuplicate ? "DUPLICATE  •  +" + result.AffinityAwarded + " AFFINITY XP" : "NEW!") +
-                    (results.Count > 1 ? "\n" + (i + 1) + " / " + results.Count : string.Empty);
-                yield return new WaitForSecondsRealtime(stars == 5 ? 1.05f : 0.65f);
-            }
-            revealOverlay.gameObject.SetActive(false);
-            presentingSummons = false;
-            Refresh();
+            List<GachaResult> results; if (!state.TrySummon(banner, count, out results)) return;
+            revealResults = results; revealIndex = 0; revealTimer = RevealDuration(results[0]); SaveNow();
         }
 
-        private void ShowScreen(RectTransform screen)
+        private static float RevealDuration(GachaResult result) { return result.Character.Definition.Rarity == CharacterRarity.FiveStar ? 1.5f : .9f; }
+        private static string UnlockLine(bool unlocked, string text) { return (unlocked ? "✓ " : "□ ") + text; }
+        private static string Stars(CharacterRarity rarity) { return new string('★', (int)rarity); }
+        private static string Roman(int rank) { return rank == 3 ? "III" : rank == 2 ? "II" : "I"; }
+        private static string RarityRole(CharacterRarity rarity) { return rarity == CharacterRarity.ThreeStar ? "Early efficiency" : rarity == CharacterRarity.FiveStar ? "Late-run scaling" : "Balanced growth"; }
+        private static string Number(double value) { if (value >= 1e12) return (value/1e12).ToString("0.##")+"T"; if (value >= 1e9) return (value/1e9).ToString("0.##")+"B"; if (value >= 1e6) return (value/1e6).ToString("0.##")+"M"; if (value >= 1e3) return (value/1e3).ToString("0.##")+"K"; return value.ToString(value < 100 ? "0.0" : "0"); }
+        private static string Duration(double seconds) { TimeSpan time = TimeSpan.FromSeconds(Math.Max(0, seconds)); return time.TotalHours >= 1 ? ((int)time.TotalHours) + "h " + time.Minutes + "m" : time.Minutes > 0 ? time.Minutes + "m " + time.Seconds + "s" : time.Seconds + "s"; }
+        private static void DrawBackground(Rect rect, Color color) { Color old = GUI.color; GUI.color = color; GUI.DrawTexture(rect, Texture2D.whiteTexture); GUI.color = old; }
+        private static void DrawModalShade(float width, float height) { DrawBackground(new Rect(0,0,width,height), new Color(0,0,0,.86f)); }
+
+        private void EnsureStyles()
         {
-            if (mainScreen == null) return;
-            mainScreen.gameObject.SetActive(screen == mainScreen);
-            rosterScreen.gameObject.SetActive(screen == rosterScreen);
-            summonScreen.gameObject.SetActive(screen == summonScreen);
-            Refresh();
+            if (stylesReady) return; stylesReady = true;
+            titleStyle = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, richText = true, normal = { textColor = new Color(.3f,.82f,1f) } };
+            headingStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, richText = true, normal = { textColor = Color.white } };
+            bodyStyle = new GUIStyle(GUI.skin.label) { fontSize = 16, alignment = TextAnchor.UpperLeft, wordWrap = true, richText = true, normal = { textColor = new Color(.84f,.87f,.95f) } };
+            centeredStyle = new GUIStyle(bodyStyle) { alignment = TextAnchor.MiddleCenter };
+            smallStyle = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Italic, alignment = TextAnchor.MiddleCenter, normal = { textColor = new Color(.75f,.8f,.9f) } };
+            cardStyle = new GUIStyle(GUI.skin.box); cardStyle.normal.background = MakeTexture(new Color(.075f,.09f,.16f,.98f));
+            bigButtonStyle = new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, richText = true, wordWrap = true, normal = { textColor = Color.white }, hover = { textColor = Color.white }, active = { textColor = Color.white } };
         }
 
-        private void Refresh()
-        {
-            if (state == null || state.ActiveCharacter == null || creditsText == null) return;
-            CharacterRuntimeState active = state.ActiveCharacter;
-            CharacterData data = active.Definition;
-            creditsText.text = "CREDITS  " + FormatNumber(state.Credits);
-            currencyText.text = "TICKETS  " + state.StandardTickets + "     LUMINA  " + state.Lumina + "     POWER x" + state.AscensionMultiplier.ToString("0.00");
-            mainCharacterName.text = StarText(data.Rarity) + "  " + data.DisplayName;
-            mainCharacterName.color = data.AccentColor;
-            mainPortrait.color = data.AccentColor;
-            mainPortrait.sprite = data.Portrait;
-            int rank = state.GetAffinityRank(active);
-            string affinityProgress = rank >= 3 ? "MAX" : active.AffinityXp + " / " + (rank == 1 ? config.AffinityRankTwoXp : config.AffinityRankThreeXp);
-            mainCharacterStats.text = "LEVEL " + active.Level + " / " + config.RunLevelCap + "\nAffinity " + Roman(rank) + "  (" + affinityProgress + ")\n\n+" + FormatNumber(state.ClickIncome) + " per tap\n+" + FormatNumber(state.PassiveIncomePerSecond) + " Credits / sec\n\n" + data.Description;
-            levelButtonText.text = active.Level >= config.RunLevelCap ? "MAX RUN LEVEL" : "LEVEL UP\n" + FormatNumber(state.NextLevelCost) + " CREDITS";
-            levelButton.interactable = state.CanLevel;
-            AscensionReward reward = state.ProjectedAscensionReward;
-            ascendButtonText.text = state.CanAscend ? "ASCEND\n+" + reward.Lumina + " L / +" + reward.Power + " POWER" : "ASCEND\nLV." + config.AscensionMinimumLevel + " REQUIRED";
-            ascendButton.interactable = state.CanAscend;
-            RefreshRoster();
-            foreach (BannerView view in bannerViews)
-            {
-                int owned = state.CurrencyFor(view.Banner);
-                view.Currency.text = "OWNED  " + owned + " " + CurrencyName(view.Banner);
-                view.Pity.text = "5★ PITY  " + state.GetPity(view.Banner) + " / " + view.Banner.HardPity;
-                view.SingleButton.interactable = !presentingSummons && owned >= view.Banner.SinglePullCost;
-                view.TenButton.interactable = !presentingSummons && owned >= view.Banner.TenPullCost;
-            }
-        }
-
-        private void RefreshRoster()
-        {
-            for (int i = 0; i < rosterCards.Count; i++)
-            {
-                CharacterRuntimeState character = state.Roster[i];
-                RectTransform card = rosterCards[i];
-                Image portrait = card.Find("CardPortrait").GetComponent<Image>();
-                Text lockText = portrait.transform.Find("Lock").GetComponent<Text>();
-                Text name = card.Find("CardName").GetComponent<Text>();
-                Text info = card.Find("CardInfo").GetComponent<Text>();
-                Text active = card.Find("Active").GetComponent<Text>();
-                Button button = card.GetComponent<Button>();
-                portrait.color = character.IsOwned ? character.Definition.AccentColor : new Color(0.075f, 0.08f, 0.1f);
-                lockText.text = character.IsOwned ? StarText(character.Definition.Rarity) : "LOCKED";
-                name.text = character.IsOwned ? character.Definition.DisplayName : "UNKNOWN ECHO";
-                name.color = character.IsOwned ? character.Definition.AccentColor : Color.gray;
-                int rank = state.GetAffinityRank(character);
-                info.text = character.IsOwned ? "Level " + character.Level + "\nAffinity " + Roman(rank) + "  •  " + character.AffinityXp + " XP\n" + RarityRole(character.Definition) : "Summon this Echo to unlock.";
-                active.text = character == state.ActiveCharacter ? "● ACTIVE ECHO" : character.IsOwned ? "SELECT" : string.Empty;
-                button.interactable = character.IsOwned && character != state.ActiveCharacter;
-                card.GetComponent<Image>().color = character == state.ActiveCharacter ? Color.Lerp(character.Definition.AccentColor, Soft, 0.55f) : Soft;
-            }
-        }
-
-        private static string RarityRole(CharacterData data)
-        {
-            if (data.Rarity == CharacterRarity.ThreeStar) return "Low cost • early efficiency";
-            if (data.Rarity == CharacterRarity.FiveStar) return "Higher cost • late scaling";
-            return "Balanced growth";
-        }
-
-        private void ShowMessage(string message) { if (messageText != null) messageText.text = message; }
-        private static string StarText(CharacterRarity rarity) { return new string('★', (int)rarity); }
-        private static string Roman(int value) { return value == 3 ? "III" : value == 2 ? "II" : "I"; }
-        private static string CurrencyName(BannerData banner) { return banner.Currency == BannerCurrency.Lumina ? "LUMINA" : "TICKETS"; }
-        private static string FormatNumber(double value)
-        {
-            if (value >= 1e12) return (value / 1e12).ToString("0.##") + "T";
-            if (value >= 1e9) return (value / 1e9).ToString("0.##") + "B";
-            if (value >= 1e6) return (value / 1e6).ToString("0.##") + "M";
-            if (value >= 1e3) return (value / 1e3).ToString("0.##") + "K";
-            return value.ToString(value < 100 ? "0.0" : "0");
-        }
-
-        private void EnsureEventSystem()
-        {
-            if (FindAnyObjectByType<EventSystem>() != null) return;
-            GameObject eventObject = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
-            DontDestroyOnLoad(eventObject);
-        }
-
-        private RectTransform CreatePanel(string name, Transform parent, Color color) { return CreateImage(name, parent, color).rectTransform; }
-        private static Image CreateImage(string name, Transform parent, Color color)
-        {
-            GameObject item = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            item.transform.SetParent(parent, false);
-            Image image = item.GetComponent<Image>();
-            image.color = color;
-            return image;
-        }
-
-        private Text CreateText(string name, Transform parent, string value, int size, FontStyle style, Color color, TextAnchor alignment)
-        {
-            GameObject item = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            item.transform.SetParent(parent, false);
-            Text text = item.GetComponent<Text>();
-            text.font = font;
-            text.text = value;
-            text.fontSize = size;
-            text.fontStyle = style;
-            text.color = color;
-            text.alignment = alignment;
-            text.supportRichText = true;
-            text.horizontalOverflow = HorizontalWrapMode.Wrap;
-            text.verticalOverflow = VerticalWrapMode.Truncate;
-            return text;
-        }
-
-        private Button CreateButton(string name, Transform parent, Color color, UnityEngine.Events.UnityAction action, out Text label)
-        {
-            Image image = CreateImage(name, parent, color);
-            Button button = image.gameObject.AddComponent<Button>();
-            button.targetGraphic = image;
-            ColorBlock colors = button.colors;
-            colors.highlightedColor = Color.Lerp(color, Color.white, 0.18f);
-            colors.pressedColor = Color.Lerp(color, Color.black, 0.2f);
-            colors.disabledColor = new Color(0.12f, 0.13f, 0.17f, 0.85f);
-            button.colors = colors;
-            button.onClick.AddListener(action);
-            label = CreateText("Label", image.transform, name, 17, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            Stretch(label.rectTransform, 6, 6, 5, 5);
-            return button;
-        }
-
-        private static void Stretch(RectTransform rect, float left, float right, float bottom, float top)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = new Vector2(left, bottom);
-            rect.offsetMax = new Vector2(-right, -top);
-        }
-
-        private static void SetRect(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
-        {
-            rect.anchorMin = anchorMin;
-            rect.anchorMax = anchorMax;
-            rect.offsetMin = offsetMin;
-            rect.offsetMax = offsetMax;
-        }
+        private static Texture2D MakeTexture(Color color) { Texture2D texture = new Texture2D(1,1); texture.SetPixel(0,0,color); texture.Apply(); return texture; }
     }
 }

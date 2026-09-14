@@ -10,17 +10,11 @@ namespace LuminaRift
         public int Level { get; private set; }
         public int AffinityXp { get; private set; }
 
-        public CharacterRuntimeState(CharacterData definition, bool isOwned)
-        {
-            Definition = definition;
-            IsOwned = isOwned;
-            Level = 1;
-            AffinityXp = 0;
-        }
-
+        public CharacterRuntimeState(CharacterData definition, bool owned) { Definition = definition; IsOwned = owned; Level = 1; }
         public void Unlock() { IsOwned = true; }
         public void GainLevel() { Level++; }
         public void AddAffinity(int amount) { AffinityXp += Math.Max(0, amount); }
-        public void ResetLevel() { Level = 1; }
+        public void ResetLevel(int level) { Level = Math.Max(1, level); }
+        public void Restore(bool owned, int level, int affinityXp) { IsOwned = owned; Level = Math.Max(1, level); AffinityXp = Math.Max(0, affinityXp); }
     }
 }

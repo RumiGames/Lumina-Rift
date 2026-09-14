@@ -9,107 +9,70 @@ namespace LuminaRift
         public CharacterRuntimeState Character { get; private set; }
         public bool WasDuplicate { get; private set; }
         public int AffinityAwarded { get; private set; }
-
-        public GachaResult(CharacterRuntimeState character, bool duplicate, int affinityAwarded)
-        {
-            Character = character;
-            WasDuplicate = duplicate;
-            AffinityAwarded = affinityAwarded;
-        }
+        public GachaResult(CharacterRuntimeState character, bool duplicate, int xp) { Character = character; WasDuplicate = duplicate; AffinityAwarded = xp; }
     }
 
     public sealed class GachaManager
     {
         private readonly PrototypeGameConfig config;
         private readonly IReadOnlyList<CharacterRuntimeState> roster;
-        private readonly Dictionary<string, int> pityByBanner = new Dictionary<string, int>();
+        private readonly Dictionary<string, int> pity = new Dictionary<string, int>();
         private readonly Random random;
 
         public GachaManager(PrototypeGameConfig gameConfig, IReadOnlyList<CharacterRuntimeState> characterRoster, int? seed = null)
-        {
-            config = gameConfig;
-            roster = characterRoster;
-            random = seed.HasValue ? new Random(seed.Value) : new Random();
-        }
+        { config = gameConfig; roster = characterRoster; random = seed.HasValue ? new Random(seed.Value) : new Random(); }
 
-        public int GetPity(BannerData banner)
+        public int GetPity(BannerData banner) { int value; return banner != null && pity.TryGetValue(banner.BannerId, out value) ? value : 0; }
+        public List<PitySaveRecord> ExportPity() { return pity.Select(pair => new PitySaveRecord { bannerId = pair.Key, pullsSinceFiveStar = pair.Value }).ToList(); }
+        public void RestorePity(IEnumerable<PitySaveRecord> records)
         {
-            int value;
-            return banner != null && pityByBanner.TryGetValue(banner.BannerId, out value) ? value : 0;
+            pity.Clear(); if (records == null) return;
+            foreach (PitySaveRecord record in records) if (record != null && !string.IsNullOrEmpty(record.bannerId)) pity[record.bannerId] = Math.Max(0, record.pullsSinceFiveStar);
         }
 
         public List<GachaResult> Pull(BannerData banner, int count)
         {
-            var results = new List<GachaResult>();
-            bool hasHighRarity = false;
+            var results = new List<GachaResult>(); bool highRarity = false;
             for (int i = 0; i < count; i++)
             {
-                bool guaranteeFourPlus = count == 10 && i == count - 1 && !hasHighRarity;
-                CharacterRarity rarity = RollRarity(banner, guaranteeFourPlus);
-                CharacterRuntimeState pulled = PickCharacter(banner, rarity);
-                if (pulled == null) continue;
-
-                bool duplicate = pulled.IsOwned;
-                int affinity = 0;
-                if (duplicate)
-                {
-                    affinity = config.DuplicateAffinity(pulled.Definition.Rarity);
-                    pulled.AddAffinity(affinity);
-                }
-                else
-                {
-                    pulled.Unlock();
-                }
-
-                if (rarity >= CharacterRarity.FourStar) hasHighRarity = true;
-                results.Add(new GachaResult(pulled, duplicate, affinity));
+                CharacterRarity rarity = RollRarity(banner, count == 10 && i == 9 && !highRarity);
+                CharacterRuntimeState character = PickCharacter(banner, rarity); if (character == null) continue;
+                bool duplicate = character.IsOwned; int xp = 0;
+                if (duplicate) { xp = config.DuplicateAffinity(character.Definition.Rarity); character.AddAffinity(xp); }
+                else character.Unlock();
+                if (rarity >= CharacterRarity.FourStar) highRarity = true;
+                results.Add(new GachaResult(character, duplicate, xp));
             }
             return results;
         }
 
-        private CharacterRarity RollRarity(BannerData banner, bool guaranteeFourPlus)
+        private CharacterRarity RollRarity(BannerData banner, bool guaranteeFour)
         {
-            int pity = GetPity(banner);
-            CharacterRarity rarity;
-            if (pity + 1 >= banner.HardPity)
+            int current = GetPity(banner); CharacterRarity result;
+            if (current + 1 >= banner.HardPity) result = CharacterRarity.FiveStar;
+            else if (guaranteeFour)
             {
-                rarity = CharacterRarity.FiveStar;
-            }
-            else if (guaranteeFourPlus)
-            {
-                double highTotal = banner.FourStarRate + banner.FiveStarRate;
-                rarity = highTotal > 0d && random.NextDouble() * highTotal < banner.FiveStarRate
-                    ? CharacterRarity.FiveStar
-                    : CharacterRarity.FourStar;
+                double high = banner.FourStarRate + banner.FiveStarRate;
+                result = random.NextDouble() * Math.Max(0.001, high) < banner.FiveStarRate ? CharacterRarity.FiveStar : CharacterRarity.FourStar;
             }
             else
             {
                 double total = banner.ThreeStarRate + banner.FourStarRate + banner.FiveStarRate;
-                double roll = random.NextDouble() * Math.Max(0.0001d, total);
-                if (roll < banner.FiveStarRate) rarity = CharacterRarity.FiveStar;
-                else if (roll < banner.FiveStarRate + banner.FourStarRate) rarity = CharacterRarity.FourStar;
-                else rarity = CharacterRarity.ThreeStar;
+                double roll = random.NextDouble() * Math.Max(0.001, total);
+                result = roll < banner.FiveStarRate ? CharacterRarity.FiveStar : roll < banner.FiveStarRate + banner.FourStarRate ? CharacterRarity.FourStar : CharacterRarity.ThreeStar;
             }
-
-            pityByBanner[banner.BannerId] = rarity == CharacterRarity.FiveStar ? 0 : pity + 1;
-            return rarity;
+            pity[banner.BannerId] = result == CharacterRarity.FiveStar ? 0 : current + 1;
+            return result;
         }
 
         private CharacterRuntimeState PickCharacter(BannerData banner, CharacterRarity rarity)
         {
-            if (rarity == CharacterRarity.FiveStar && banner.RateUpCharacter != null &&
-                random.NextDouble() < banner.RateUpShareOfFiveStar)
+            if (rarity == CharacterRarity.FiveStar && banner.RateUpCharacter != null && random.NextDouble() < banner.RateUpShareOfFiveStar)
             {
-                CharacterRuntimeState rateUp = roster.FirstOrDefault(item => item.Definition == banner.RateUpCharacter);
-                if (rateUp != null) return rateUp;
+                CharacterRuntimeState featured = roster.FirstOrDefault(item => item.Definition == banner.RateUpCharacter); if (featured != null) return featured;
             }
-
-            var candidates = roster.Where(item =>
-                item.Definition.Rarity == rarity && banner.CharacterPool.Contains(item.Definition)).ToList();
-            if (candidates.Count == 0)
-            {
-                candidates = roster.Where(item => banner.CharacterPool.Contains(item.Definition)).ToList();
-            }
+            List<CharacterRuntimeState> candidates = roster.Where(item => item.Definition.Rarity == rarity && banner.CharacterPool.Contains(item.Definition)).ToList();
+            if (candidates.Count == 0) candidates = roster.Where(item => banner.CharacterPool.Contains(item.Definition)).ToList();
             return candidates.Count == 0 ? null : candidates[random.Next(candidates.Count)];
         }
     }
