@@ -1,0 +1,57 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2357a147a37454b479689ebb9da9ce51, type: 3}
+  m_Name: PrototypeGameConfig
+  m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.PrototypeGameConfig
+  prototypeVersion: 2
+  characters:
+  - {fileID: 11400000, guid: a8ab22c5ad1e1a14faf223589204b0ea, type: 2}
+  - {fileID: 11400000, guid: 8c9dd7c6d1ef80f4980feb36959119d6, type: 2}
+  - {fileID: 11400000, guid: 977cd1f2799803943aca7b2b54f1a673, type: 2}
+  - {fileID: 11400000, guid: e1a3b7c6d1e54f4ab2c8d9e0f1a2b345, type: 2}
+  - {fileID: 11400000, guid: 57d8295f1ac88484ba17f3852211cea3, type: 2}
+  - {fileID: 11400000, guid: e2b4c8d7e2f64a5bc3d9e0f1a2b3c456, type: 2}
+  startingCharacter: {fileID: 11400000, guid: a8ab22c5ad1e1a14faf223589204b0ea, type: 2}
+  banners:
+  - {fileID: 11400000, guid: f1c5d9e8f3a74b6cd4e0f1a2b3c4d567, type: 2}
+  - {fileID: 11400000, guid: f2d6e0f9a4b84c7de5f1a2b3c4d5e678, type: 2}
+  runLevelCap: 100
+  firstLevelCost: 8
+  levelCostGrowth: 1.14
+  milestones:
+  - level: 10
+    incomeMultiplier: 2
+    standardTickets: 2
+  - level: 25
+    incomeMultiplier: 2
+    standardTickets: 4
+  - level: 50
+    incomeMultiplier: 3
+    standardTickets: 10
+  - level: 75
+    incomeMultiplier: 1.75
+    standardTickets: 5
+  - level: 100
+    incomeMultiplier: 2
+    standardTickets: 10
+  affinityRankTwoXp: 25
+  affinityRankThreeXp: 75
+  rankTwoClickBonus: 0.1
+  rankThreePassiveBonus: 0.1
+  threeStarDuplicateAffinity: 10
+  fourStarDuplicateAffinity: 25
+  fiveStarDuplicateAffinity: 75
+  ascensionMinimumLevel: 50
+  baseAscensionLumina: 100
+  bonusLuminaPerExtraLevel: 20
+  extraLevelsPerBonusPower: 10
+  permanentIncomeBonusPerPower: 0.25
