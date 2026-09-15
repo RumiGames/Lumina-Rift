@@ -15,15 +15,29 @@ namespace LuminaRift.Editor
         private const string ScenePath = "Assets/Scenes/Main.unity";
         static PrototypeAssetSetup() { EditorApplication.delayCall += EnsureAssets; }
 
-        [MenuItem("Lumina Rift/Rebuild Prototype 0.0.4 Data")]
+        [MenuItem("Lumina Rift/Rebuild Prototype 0.0.5 Data")]
         public static void Rebuild() { DeleteGeneratedData(); BuildData(); }
 
         public static void EnsureAssets()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
             PrototypeGameConfig config = AssetDatabase.LoadAssetAtPath<PrototypeGameConfig>(ConfigPath);
-            if (config == null || config.PrototypeVersion < 4) { DeleteGeneratedData(); BuildData(); }
+            if (config == null) { BuildData(); }
+            else if (config.PrototypeVersion < 5 || config.Characters.Count > 0 && config.Characters[0].Tags.Count == 0) UpgradeTeamData(config);
             EnsureScene();
+        }
+
+        private static void UpgradeTeamData(PrototypeGameConfig config)
+        {
+            foreach (CharacterData character in config.Characters)
+            {
+                if (character == null) continue;
+                PrototypeContent.ConfigureTeamIdentity(character, character.CharacterId, character.Rarity);
+                EditorUtility.SetDirty(character);
+            }
+            // Configure advances the data version while retaining the existing character assets and artwork references.
+            config.Configure(new List<CharacterData>(config.Characters), new List<BannerData>(config.Banners));
+            EditorUtility.SetDirty(config); AssetDatabase.SaveAssets();
         }
 
         private static void BuildData()

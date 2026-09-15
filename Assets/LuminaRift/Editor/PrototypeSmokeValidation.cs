@@ -9,7 +9,7 @@ namespace LuminaRift.Editor
 {
     public static class PrototypeSmokeValidation
     {
-        [MenuItem("Lumina Rift/Validate Prototype 0.0.4 Loop")]
+        [MenuItem("Lumina Rift/Validate Prototype 0.0.5 Loop")]
         public static void Run()
         {
             PrototypeGameConfig config = PrototypeContent.LoadOrCreate(); var game = new LuminaRiftGameState(config, 12345);
@@ -26,12 +26,14 @@ namespace LuminaRift.Editor
             snapshot.ascensionCount = 5; snapshot.autoLevelEnabled = true; restored.Restore(snapshot);
             Require(restored.LevelTenUnlocked && restored.LevelMaxUnlocked && restored.AutoLevelUnlocked && restored.AutoLevelEnabled, "Automation unlock restore failed.");
             ValidateCollectionAscension(config);
-            Debug.Log("Lumina Rift Prototype 0.0.4 validation passed.");
+            ValidateEchoTeams(config);
+            Debug.Log("Lumina Rift Prototype 0.0.5 validation passed.");
         }
 
         private static void ValidateBannerPools(PrototypeGameConfig config)
         {
-            Require(config.PrototypeVersion == 4 && config.Characters.Count == 21 && config.Banners.Count == 2, "0.0.4 roster setup failed.");
+            Require(config.PrototypeVersion == 5 && config.Characters.Count == 21 && config.Banners.Count == 2, "0.0.5 roster setup failed.");
+            Require(config.Characters.All(character => character.Tags.Count > 0 && character.SupportEffectValue > 0), "Echo tags or Support effects were not configured.");
             int three = 0, four = 0, five = 0;
             foreach (CharacterData character in config.Characters)
             { if (character.Rarity == CharacterRarity.ThreeStar) three++; else if (character.Rarity == CharacterRarity.FourStar) four++; else five++; }
@@ -73,6 +75,29 @@ namespace LuminaRift.Editor
             Require(!game.TryAscend(), "Repeated Ascension must not pay again.");
             var restored = new LuminaRiftGameState(config, 22); restored.Restore(game.CreateSave());
             Require(restored.Lumina == game.Lumina && restored.AscensionPower == game.AscensionPower && !restored.CanAscend, "Collection Ascension save restore failed.");
+        }
+
+        private static void ValidateEchoTeams(PrototypeGameConfig config)
+        {
+            var game = new LuminaRiftGameState(config, 31); var snapshot = game.CreateSave();
+            for (int i = 0; i < 5; i++) snapshot.characters[i].isOwned = true;
+            game.Restore(snapshot);
+            double clickBefore = game.ClickIncome, passiveBefore = game.PassiveIncomePerSecond;
+            Require(game.ToggleSupportCharacter(game.Roster[1]) && game.ToggleSupportCharacter(game.Roster[2]), "Support assignment failed.");
+            Require(game.SupportCharacters.Count == LuminaRiftGameState.MaxSupportCharacters, "Support slot limit failed.");
+            Require(!game.ToggleSupportCharacter(game.Roster[3]), "A third Support Echo was accepted.");
+            Require(game.ClickIncome > clickBefore && game.PassiveIncomePerSecond > passiveBefore, "Support income or effects failed.");
+            double expectedOffline = game.PassiveIncomePerSecond * config.OfflineEarningsRate * (1d + game.Roster[1].Definition.SupportEffectValue);
+            Require(Math.Abs(game.OfflineIncomePerSecond - expectedOffline) < .0001 && game.OfflineIncomePerSecond < game.PassiveIncomePerSecond, "Reduced offline income or its Support bonus failed.");
+
+            var restored = new LuminaRiftGameState(config, 32); restored.Restore(game.CreateSave());
+            Require(restored.SupportCharacters.Count == 2 && restored.SupportCharacters[0].Definition.CharacterId == game.Roster[1].Definition.CharacterId, "Support order/save restore failed.");
+            Require(restored.SetActiveCharacter(restored.SupportCharacters[0]) && restored.SupportCharacters.Count == 1, "Promoting Support to Active did not remove the duplicate slot.");
+
+            PlayerSaveData invalid = game.CreateSave();
+            invalid.supportCharacterIds = new List<string> { invalid.activeCharacterId, invalid.supportCharacterIds[0], invalid.supportCharacterIds[0], "deleted_echo" };
+            var sanitized = new LuminaRiftGameState(config, 33); sanitized.Restore(invalid);
+            Require(sanitized.SupportCharacters.Count == 1 && sanitized.SupportCharacters[0] != sanitized.ActiveCharacter, "Invalid or duplicate Support entries were not sanitized.");
         }
 
         private static void LevelTo(LuminaRiftGameState game, int level)

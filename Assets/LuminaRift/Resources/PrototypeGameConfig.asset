@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02cb65342c6bb7443b4662a57174a696, type: 3}
   m_Name: PrototypeGameConfig
   m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.PrototypeGameConfig
-  prototypeVersion: 4
+  prototypeVersion: 5
   characters:
   - {fileID: 11400000, guid: 9b4ac182fcc825c449efa0439ae3651b, type: 2}
   - {fileID: 11400000, guid: a0e432af87719b643b5f8fd7632e24bc, type: 2}
@@ -71,6 +71,7 @@ MonoBehaviour:
   extraLevelsPerBonusPower: 10
   permanentIncomeBonusPerPower: 0.25
   offlineEarningsCapHours: 8
+  offlineEarningsRate: 0.25
   levelTenUnlockAscensions: 2
   levelMaxUnlockAscensions: 3
   autoLevelUnlockAscensions: 5

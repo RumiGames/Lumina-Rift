@@ -39,6 +39,7 @@ namespace LuminaRift
         public long lastSaveUtcTicks;
         public double pendingOfflineCredits;
         public double pendingOfflineSeconds;
+        public bool offlineEarningsRateApplied;
         public double credits;
         public int standardTickets;
         public int lumina;
@@ -46,6 +47,7 @@ namespace LuminaRift
         public int ascensionCount;
         public bool autoLevelEnabled;
         public string activeCharacterId;
+        public List<string> supportCharacterIds = new List<string>();
         public List<CharacterSaveRecord> characters = new List<CharacterSaveRecord>();
         public List<PitySaveRecord> pity = new List<PitySaveRecord>();
         public List<string> claimedRunMilestones = new List<string>();

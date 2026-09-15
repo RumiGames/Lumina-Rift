@@ -22,6 +22,10 @@ MonoBehaviour:
   clickLevelExponent: 1.12
   passiveLevelExponent: 1.09
   accentColor: {r: 0.88, g: 0.48, b: 0.72, a: 1}
+  tags: [1, 3]
+  supportEffect: 2
+  supportEffectValue: 0.1
+  supportEffectTag: 1
   portrait: {fileID: 0}
   homeArtwork: {fileID: 0}
   summonArtwork: {fileID: 0}

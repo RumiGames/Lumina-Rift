@@ -1,8 +1,23 @@
-# Lumina Rift — Prototype 0.0.4: Visual Identity
+# Lumina Rift — Prototype 0.0.5: Echo Teams
 
 Open `Assets/Scenes/Main.unity` and press Play. On first import, the editor creates the scene and all character, banner, and balance ScriptableObjects automatically.
 
-## Added in 0.0.4
+## Added in 0.0.5
+
+- One Active Echo and two Support Echo slots, managed directly from the Character Collection.
+- Support Echoes contribute 50% of their own passive output without replacing the Home character.
+- Every Echo now has gameplay tags and one readable Support effect: passive, click, offline, or tag-specific income.
+- Home shows total team passive output and the Support contribution separately.
+- Active and Support selections persist in local saves. Restore sanitizes missing, locked, duplicate, over-cap, and Active-as-Support entries.
+- Offline earnings use 25% of the full team's passive output, then apply assigned offline Support bonuses. The percentage is tunable in the game config.
+- The Character Collection is a continuous vertical scroll with mouse-wheel, draggable-thumb, track-click, and drag-anywhere controls.
+- Player-facing copy calls tags "traits" and explains each Support effect as a sentence on the relevant Echo card.
+- Character traits and effects use separate fitted lines so multi-trait Echoes remain readable.
+- Orbital rings and glow remain behind both placeholders and finished character artwork; placeholder initials no longer have a stray central diamond.
+- Ascension uses a focused, scrollable list of collected Echoes with simple readiness progress; the reward summary remains unchanged.
+- Weiss Schnee's trial portrait, Home render, and summon artwork are assigned across the complete presentation pipeline.
+
+## Preserved from 0.0.4
 
 - An art-independent astral-fantasy presentation built from cloud blue, pearl ivory, soft lavender, champagne gold, frosted panels, procedural clouds, orbital geometry, and crystalline rift light.
 - A character-first Home screen with click glow, floating income, rarity treatment, compact currencies, and a unified income/level/milestone rail.
@@ -34,7 +49,7 @@ The Standard and Featured banners use separate 40-pull pity counters, a 10-pull 
 - Passive text and panels have fixed states; only buttons react to hover, with no font or layout changes. Banner tabs are wider and banner titles fit on one line.
 - Offline earnings use separate heading, duration, reward, and collection rows with a readable Credit total.
 - Summons build from a charging rift into rarity-coloured light and a character reveal. Five-star arrivals have a longer build and a fuller burst.
-- Reveals wait for **Reveal next**. **Skip to results** works throughout the sequence. Both single and ten-pulls finish with a retained summary showing each Echo, rarity, new ownership, and duplicate Affinity rewards.
+- Reveals wait for **Reveal next**, but the action is available as soon as the reveal card appears. **Skip to results** works throughout the sequence. Both single and ten-pulls finish with a retained summary showing each Echo, rarity, new ownership, and duplicate Affinity rewards.
 - Modal screens consistently block background actions. Summon results are awarded and saved before the presentation starts; advancing or skipping never charges again.
 - Banner base rates and remaining hard pity read from banner data.
 
@@ -48,19 +63,19 @@ After Unity imports the project:
 
 The local save is named `lumina-rift-save.json` under `Application.persistentDataPath`. Saving is local-only; no telemetry leaves the device.
 
-Run **Lumina Rift > Validate Prototype 0.0.4 Loop** for the deterministic in-editor smoke test, or **Lumina Rift > Validate Presentation Flow** to include modal blocking, summon progression, result retention, and offline reward checks.
+Run **Lumina Rift > Validate Prototype 0.0.5 Loop** for the deterministic in-editor smoke test, including Echo Team income and save sanitization, or **Lumina Rift > Validate Presentation Flow** to include modal blocking, summon progression, result retention, and offline reward checks.
 
 ## Known limits
 
 - No cloud save, save migration beyond version 1, or tamper protection.
-- Offline income uses only the active Echo; support teams do not exist yet.
+- Support effects are intentionally limited to four simple income effects; there is not yet a general-purpose ability or synergy system.
 - Runtime visuals still use IMGUI for rapid iteration and target a 16:9 landscape layout.
 - Final character renders are intentionally unassigned; characters use lightweight luminous silhouettes until Koikatsu exports are added to their presentation slots.
 - Summon reveals can be skipped but do not yet have a persistent pull-history screen.
 
-## Recommended 0.0.5
+## Recommended next step
 
-Import one representative Koikatsu character as a transparent card portrait, Home full-body render, and Summon pose; evaluate all three crops before carrying that export pipeline to the remaining characters. Once the presentation and retention pacing are sound, build Active + Support teams, abilities, tags, and synergy.
+Playtest Weiss at the 1280x720 reference layout and adjust the three crops before producing the remaining character art. Then tune Support contribution and effects using real save progression before expanding into richer abilities and multi-tag synergies.
 
 Open **Lumina Rift > Visual Preview (No Save)** to inspect Home, Collection, Summon, Records, Offline, Reveal, Results, and Ascension at the 1280x720 reference layout. This editor-only preview uses disposable sample data and never creates a save service. The currency toggle previews enabled and disabled summon buttons.
 

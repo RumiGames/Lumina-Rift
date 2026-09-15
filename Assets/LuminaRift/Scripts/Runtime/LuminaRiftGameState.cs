@@ -8,12 +8,15 @@ namespace LuminaRift
     {
         private readonly PrototypeGameConfig config;
         private readonly List<CharacterRuntimeState> roster = new List<CharacterRuntimeState>();
+        private readonly List<CharacterRuntimeState> supportCharacters = new List<CharacterRuntimeState>();
         private readonly HashSet<string> claimedMilestones = new HashSet<string>();
         private GachaManager gacha;
 
         public event Action Changed;
         public event Action<string> MessageRaised;
         public IReadOnlyList<CharacterRuntimeState> Roster { get { return roster; } }
+        public IReadOnlyList<CharacterRuntimeState> SupportCharacters { get { return supportCharacters; } }
+        public const int MaxSupportCharacters = 2;
         public IReadOnlyList<BannerData> Banners { get { return config.Banners; } }
         public CharacterRuntimeState ActiveCharacter { get; private set; }
         public double Credits { get; private set; }
@@ -31,6 +34,18 @@ namespace LuminaRift
         public float AscensionMultiplier { get { return 1f + AscensionPower * config.PermanentIncomeBonusPerPower; } }
         public double ClickIncome { get { return CalculateIncome(true); } }
         public double PassiveIncomePerSecond { get { return CalculateIncome(false); } }
+        public double ActivePassiveIncomePerSecond { get { return ActiveCharacter == null ? 0 : ApplyPassiveBonuses(ActiveCharacter, CalculateCharacterIncome(ActiveCharacter, false)); } }
+        public double SupportPassiveIncomePerSecond
+        {
+            get
+            {
+                double total = 0;
+                foreach (CharacterRuntimeState support in supportCharacters)
+                    total += ApplyPassiveBonuses(support, CalculateCharacterIncome(support, false) * 0.5d);
+                return total;
+            }
+        }
+        public double OfflineIncomePerSecond { get { return PassiveIncomePerSecond * config.OfflineEarningsRate * (1d + SumSupportBonus(SupportEffectType.OfflineIncome)); } }
         public bool CanAscend { get { return roster.Any(character => character.IsOwned && character.Level >= config.AscensionMinimumLevel); } }
         public AscensionReward GetAscensionContribution(CharacterRuntimeState character)
         {
@@ -105,7 +120,17 @@ namespace LuminaRift
         public bool SetActiveCharacter(CharacterRuntimeState character)
         {
             if (character == null || !character.IsOwned || !roster.Contains(character)) return false;
+            supportCharacters.Remove(character);
             ActiveCharacter = character; Raise(character.Definition.DisplayName + " is now active."); Notify(); return true;
+        }
+
+        public bool ToggleSupportCharacter(CharacterRuntimeState character)
+        {
+            if (character == null || !character.IsOwned || !roster.Contains(character) || character == ActiveCharacter) return false;
+            if (supportCharacters.Remove(character))
+            { Raise(character.Definition.DisplayName + " left the Support team."); Notify(); return true; }
+            if (supportCharacters.Count >= MaxSupportCharacters) return false;
+            supportCharacters.Add(character); Raise(character.Definition.DisplayName + " joined the Support team."); Notify(); return true;
         }
 
         public bool TrySummon(BannerData banner, int count, out List<GachaResult> results)
@@ -140,8 +165,9 @@ namespace LuminaRift
             {
                 credits = Credits, standardTickets = StandardTickets, lumina = Lumina, ascensionPower = AscensionPower,
                 ascensionCount = AscensionCount, autoLevelEnabled = AutoLevelEnabled, activeCharacterId = ActiveCharacter == null ? "" : ActiveCharacter.Definition.CharacterId,
+                supportCharacterIds = supportCharacters.Select(item => item.Definition.CharacterId).ToList(),
                 pity = gacha.ExportPity(), claimedRunMilestones = claimedMilestones.ToList(), telemetry = Telemetry,
-                pendingOfflineCredits = pendingOfflineCredits, pendingOfflineSeconds = pendingOfflineSeconds
+                pendingOfflineCredits = pendingOfflineCredits, pendingOfflineSeconds = pendingOfflineSeconds, offlineEarningsRateApplied = true
             };
             foreach (CharacterRuntimeState character in roster)
                 save.characters.Add(new CharacterSaveRecord { characterId = character.Definition.CharacterId, isOwned = character.IsOwned, level = character.Level, affinityXp = character.AffinityXp });
@@ -160,6 +186,12 @@ namespace LuminaRift
             }
             ActiveCharacter = roster.FirstOrDefault(item => item.IsOwned && item.Definition.CharacterId == save.activeCharacterId) ?? roster.FirstOrDefault(item => item.IsOwned);
             if (ActiveCharacter == null && roster.Count > 0) { ActiveCharacter = roster[0]; ActiveCharacter.Unlock(); }
+            supportCharacters.Clear();
+            foreach (string id in save.supportCharacterIds ?? new List<string>())
+            {
+                CharacterRuntimeState support = roster.FirstOrDefault(item => item.IsOwned && item != ActiveCharacter && item.Definition.CharacterId == id);
+                if (support != null && !supportCharacters.Contains(support) && supportCharacters.Count < MaxSupportCharacters) supportCharacters.Add(support);
+            }
             claimedMilestones.Clear(); foreach (string claim in save.claimedRunMilestones ?? new List<string>()) claimedMilestones.Add(claim);
             gacha.RestorePity(save.pity); Telemetry = save.telemetry ?? new TelemetrySaveData();
             AutoLevelEnabled = save.autoLevelEnabled && AutoLevelUnlocked; Notify();
@@ -170,7 +202,7 @@ namespace LuminaRift
 
         private void InitializeFresh(int? seed)
         {
-            roster.Clear(); claimedMilestones.Clear(); Credits = 0; StandardTickets = 0; Lumina = 0; AscensionPower = 0; AscensionCount = 0; AutoLevelEnabled = false;
+            roster.Clear(); supportCharacters.Clear(); claimedMilestones.Clear(); Credits = 0; StandardTickets = 0; Lumina = 0; AscensionPower = 0; AscensionCount = 0; AutoLevelEnabled = false;
             Telemetry = new TelemetrySaveData();
             foreach (CharacterData data in config.Characters.Where(item => item != null)) roster.Add(new CharacterRuntimeState(data, data == config.StartingCharacter));
             ActiveCharacter = roster.FirstOrDefault(item => item.IsOwned) ?? roster.FirstOrDefault(); if (ActiveCharacter != null) ActiveCharacter.Unlock();
@@ -180,10 +212,42 @@ namespace LuminaRift
         private double CalculateIncome(bool click)
         {
             if (ActiveCharacter == null) return 0;
-            CharacterData data = ActiveCharacter.Definition; int rank = config.GetAffinityRank(ActiveCharacter.AffinityXp);
+            if (click)
+            {
+                double bonus = SumSupportBonus(SupportEffectType.ClickIncome) + TagBonusFor(ActiveCharacter);
+                return CalculateCharacterIncome(ActiveCharacter, true) * (1d + bonus);
+            }
+            return ActivePassiveIncomePerSecond + SupportPassiveIncomePerSecond;
+        }
+
+        private double CalculateCharacterIncome(CharacterRuntimeState character, bool click)
+        {
+            CharacterData data = character.Definition; int rank = config.GetAffinityRank(character.AffinityXp);
             double affinity = 1 + (click && rank >= 2 ? config.RankTwoClickBonus : !click && rank >= 3 ? config.RankThreePassiveBonus : 0);
-            double milestone = 1; foreach (LevelMilestone item in config.Milestones) if (ActiveCharacter.Level >= item.level) milestone *= item.incomeMultiplier;
-            return (click ? data.BaseClickIncome : data.BasePassiveIncome) * Math.Pow(ActiveCharacter.Level, click ? data.ClickLevelExponent : data.PassiveLevelExponent) * milestone * affinity * AscensionMultiplier;
+            double milestone = 1; foreach (LevelMilestone item in config.Milestones) if (character.Level >= item.level) milestone *= item.incomeMultiplier;
+            return (click ? data.BaseClickIncome : data.BasePassiveIncome) * Math.Pow(character.Level, click ? data.ClickLevelExponent : data.PassiveLevelExponent) * milestone * affinity * AscensionMultiplier;
+        }
+
+        private double ApplyPassiveBonuses(CharacterRuntimeState character, double income)
+        {
+            return income * (1d + SumSupportBonus(SupportEffectType.PassiveIncome) + TagBonusFor(character));
+        }
+
+        private double SumSupportBonus(SupportEffectType effect)
+        {
+            double total = 0;
+            foreach (CharacterRuntimeState support in supportCharacters)
+                if (support.Definition.SupportEffect == effect) total += support.Definition.SupportEffectValue;
+            return total;
+        }
+
+        private double TagBonusFor(CharacterRuntimeState character)
+        {
+            double total = 0;
+            foreach (CharacterRuntimeState support in supportCharacters)
+                if (support.Definition.SupportEffect == SupportEffectType.TagIncome && character.Definition.Tags.Contains(support.Definition.SupportEffectTag))
+                    total += support.Definition.SupportEffectValue;
+            return total;
         }
 
         private void AwardMilestones()

@@ -8,7 +8,7 @@ namespace LuminaRift
         public static PrototypeGameConfig LoadOrCreate()
         {
             PrototypeGameConfig saved = Resources.Load<PrototypeGameConfig>("PrototypeGameConfig");
-            if (saved != null && saved.PrototypeVersion >= 4) return saved;
+            if (saved != null && saved.PrototypeVersion >= 5) return saved;
             List<CharacterData> characters = CreateCharacters();
             PrototypeGameConfig config = ScriptableObject.CreateInstance<PrototypeGameConfig>();
             config.Configure(characters, CreateBanners(characters)); return config;
@@ -54,6 +54,39 @@ namespace LuminaRift
         }
 
         private static CharacterData Character(string id, string name, string bio, CharacterRarity rarity, float click, float passive, float cost, float clickExp, float passiveExp, Color color)
-        { CharacterData value = ScriptableObject.CreateInstance<CharacterData>(); value.Configure(id, name, bio, rarity, click, passive, cost, clickExp, passiveExp, color); value.name = name; return value; }
+        {
+            CharacterData value = ScriptableObject.CreateInstance<CharacterData>();
+            value.Configure(id, name, bio, rarity, click, passive, cost, clickExp, passiveExp, color);
+            ConfigureTeamIdentity(value, id, rarity); value.name = name; return value;
+        }
+
+        public static void ConfigureTeamIdentity(CharacterData character, string id, CharacterRarity rarity)
+        {
+            float bonus = rarity == CharacterRarity.FiveStar ? .15f : rarity == CharacterRarity.FourStar ? .10f : .06f;
+            switch (id)
+            {
+                case "nanao_ise": character.ConfigureTeamIdentity(SupportEffectType.PassiveIncome, bonus, EchoTag.Scholar, EchoTag.Scholar, EchoTag.Precision); break;
+                case "cyan_sung_sun": character.ConfigureTeamIdentity(SupportEffectType.OfflineIncome, bonus, EchoTag.Water, EchoTag.Water, EchoTag.Swift); break;
+                case "ikumi_unagiya": character.ConfigureTeamIdentity(SupportEffectType.ClickIncome, bonus, EchoTag.Guardian, EchoTag.Guardian); break;
+                case "doll": character.ConfigureTeamIdentity(SupportEffectType.PassiveIncome, bonus, EchoTag.Precision, EchoTag.Precision); break;
+                case "camie": character.ConfigureTeamIdentity(SupportEffectType.ClickIncome, bonus, EchoTag.Swift, EchoTag.Swift); break;
+                case "kalifa": character.ConfigureTeamIdentity(SupportEffectType.TagIncome, bonus, EchoTag.Precision, EchoTag.Precision, EchoTag.Scholar); break;
+                case "juvia_lockser": character.ConfigureTeamIdentity(SupportEffectType.TagIncome, bonus, EchoTag.Water, EchoTag.Water, EchoTag.Mystic); break;
+                case "mirajane_strauss": character.ConfigureTeamIdentity(SupportEffectType.PassiveIncome, bonus, EchoTag.Mystic, EchoTag.Mystic, EchoTag.Guardian); break;
+                case "irene_belserion": character.ConfigureTeamIdentity(SupportEffectType.TagIncome, bonus, EchoTag.Mystic, EchoTag.Mystic, EchoTag.Royal); break;
+                case "orihime_inoue": character.ConfigureTeamIdentity(SupportEffectType.PassiveIncome, bonus, EchoTag.Guardian, EchoTag.Guardian, EchoTag.Mystic); break;
+                case "soi_fon": character.ConfigureTeamIdentity(SupportEffectType.ClickIncome, bonus, EchoTag.Swift, EchoTag.Swift, EchoTag.Precision); break;
+                case "nefertari_vivi": character.ConfigureTeamIdentity(SupportEffectType.OfflineIncome, bonus, EchoTag.Royal, EchoTag.Royal, EchoTag.Water); break;
+                case "ginny": character.ConfigureTeamIdentity(SupportEffectType.ClickIncome, bonus, EchoTag.Swift, EchoTag.Swift); break;
+                case "ruri": character.ConfigureTeamIdentity(SupportEffectType.TagIncome, bonus, EchoTag.Scholar, EchoTag.Scholar, EchoTag.Mystic); break;
+                case "yuzuriha": character.ConfigureTeamIdentity(SupportEffectType.OfflineIncome, bonus, EchoTag.Swift, EchoTag.Swift, EchoTag.Mystic); break;
+                case "levy_mcgarden": character.ConfigureTeamIdentity(SupportEffectType.TagIncome, bonus, EchoTag.Scholar, EchoTag.Scholar, EchoTag.Precision); break;
+                case "yoruichi_shihoin": character.ConfigureTeamIdentity(SupportEffectType.ClickIncome, bonus, EchoTag.Swift, EchoTag.Swift, EchoTag.Mystic); break;
+                case "nami": character.ConfigureTeamIdentity(SupportEffectType.OfflineIncome, bonus, EchoTag.Water, EchoTag.Water, EchoTag.Scholar); break;
+                case "kohaku": character.ConfigureTeamIdentity(SupportEffectType.PassiveIncome, bonus, EchoTag.Guardian, EchoTag.Guardian, EchoTag.Swift); break;
+                case "lucy_heartfilia": character.ConfigureTeamIdentity(SupportEffectType.TagIncome, bonus, EchoTag.Mystic, EchoTag.Mystic, EchoTag.Royal); break;
+                case "weiss_schnee": character.ConfigureTeamIdentity(SupportEffectType.TagIncome, bonus, EchoTag.Frost, EchoTag.Frost, EchoTag.Precision, EchoTag.Royal); break;
+            }
+        }
     }
 }

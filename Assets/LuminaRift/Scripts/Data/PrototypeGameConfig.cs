@@ -22,7 +22,7 @@ namespace LuminaRift
     [CreateAssetMenu(fileName = "PrototypeGameConfig", menuName = "Lumina Rift/Game Config")]
     public sealed class PrototypeGameConfig : ScriptableObject
     {
-        [SerializeField, HideInInspector] private int prototypeVersion = 4;
+        [SerializeField, HideInInspector] private int prototypeVersion = 5;
         [SerializeField] private List<CharacterData> characters = new List<CharacterData>();
         [SerializeField] private CharacterData startingCharacter;
         [SerializeField] private List<BannerData> banners = new List<BannerData>();
@@ -43,6 +43,8 @@ namespace LuminaRift
         [SerializeField] private int extraLevelsPerBonusPower = 10;
         [SerializeField] private float permanentIncomeBonusPerPower = 0.25f;
         [SerializeField] private float offlineEarningsCapHours = 8f;
+        [SerializeField, Range(0f, 1f), Tooltip("Fraction of normal passive income earned while away.")]
+        private float offlineEarningsRate = 0.25f;
         [SerializeField] private int levelTenUnlockAscensions = 2;
         [SerializeField] private int levelMaxUnlockAscensions = 3;
         [SerializeField] private int autoLevelUnlockAscensions = 5;
@@ -64,6 +66,7 @@ namespace LuminaRift
         public int AscensionMinimumLevel { get { return ascensionMinimumLevel; } }
         public float PermanentIncomeBonusPerPower { get { return permanentIncomeBonusPerPower; } }
         public float OfflineEarningsCapHours { get { return offlineEarningsCapHours; } }
+        public float OfflineEarningsRate { get { return offlineEarningsRate; } }
         public int LevelTenUnlockAscensions { get { return levelTenUnlockAscensions; } }
         public int LevelMaxUnlockAscensions { get { return levelMaxUnlockAscensions; } }
         public int AutoLevelUnlockAscensions { get { return autoLevelUnlockAscensions; } }
@@ -81,7 +84,7 @@ namespace LuminaRift
 
         public void Configure(IList<CharacterData> roster, IList<BannerData> bannerList)
         {
-            prototypeVersion = 4; characters = new List<CharacterData>(roster); startingCharacter = characters[0]; banners = new List<BannerData>(bannerList);
+            prototypeVersion = 5; characters = new List<CharacterData>(roster); startingCharacter = characters[0]; banners = new List<BannerData>(bannerList);
             milestones = new List<LevelMilestone>
             {
                 new LevelMilestone { level = 10, incomeMultiplier = 2f, standardTickets = 2 },

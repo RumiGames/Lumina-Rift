@@ -9,6 +9,11 @@ namespace LuminaRift
     {
         private enum ScreenView { Home, Characters, Summon, Stats, Ascension }
         private sealed class ClickEffect { public Vector2 Position; public float Born; public string Text; public Color Color; public float Drift; }
+        private sealed class ScrollDragState
+        {
+            public bool PendingContent, DraggingContent, DraggingBar;
+            public Vector2 PointerStart, ScrollStart;
+        }
 
         private static readonly Color TextPrimary = Hex("EDF2FA"),
             PressedSurface = Hex("22344D"), Cyan = Hex("79D8E8"), Violet = Hex("C0AAEF"),
@@ -24,7 +29,9 @@ namespace LuminaRift
         private double pendingOfflineCredits, pendingOfflineSeconds;
         private bool showOffline, showAscensionConfirm, showResetConfirm;
         private List<GachaResult> revealResults;
-        private int revealIndex, selectedBanner = 1, collectionPage, ascensionPage;
+        private int revealIndex, selectedBanner = 1;
+        private Vector2 collectionScroll, ascensionScroll;
+        private readonly ScrollDragState collectionDrag = new ScrollDragState(), ascensionDrag = new ScrollDragState();
         private float revealTimer;
         private bool showSummonSummary;
         private bool InterfaceEnabled => !showOffline && !showAscensionConfirm && !showResetConfirm && revealResults == null;
@@ -44,6 +51,11 @@ namespace LuminaRift
             PlayerSaveData loaded = saves.Load();
             if (loaded != null)
             {
+                if (!loaded.offlineEarningsRateApplied)
+                {
+                    loaded.pendingOfflineCredits *= config.OfflineEarningsRate;
+                    loaded.offlineEarningsRateApplied = true;
+                }
                 state.Restore(loaded);
                 pendingOfflineCredits = Math.Max(0, loaded.pendingOfflineCredits);
                 pendingOfflineSeconds = Math.Max(0, loaded.pendingOfflineSeconds);
@@ -52,7 +64,7 @@ namespace LuminaRift
                     double elapsed = TimeSpan.FromTicks(DateTime.UtcNow.Ticks - loaded.lastSaveUtcTicks).TotalSeconds;
                     double remainingCap = Math.Max(0, config.OfflineEarningsCapHours * 3600d - pendingOfflineSeconds);
                     double capped = Math.Min(elapsed, remainingCap);
-                    pendingOfflineSeconds += capped; pendingOfflineCredits += state.PassiveIncomePerSecond * capped;
+                    pendingOfflineSeconds += capped; pendingOfflineCredits += state.OfflineIncomePerSecond * capped;
                 }
                 showOffline = pendingOfflineCredits > 0.01;
                 message = "Welcome back! Your adventure is ready to continue.";
@@ -130,7 +142,7 @@ namespace LuminaRift
             DrawRect(new Rect(0, 65, width, 1), new Color(Gold.r, Gold.g, Gold.b, .52f));
             GUI.Label(new Rect(26, 10, 52, 44), "◇", display);
             GUI.Label(new Rect(70, 9, 255, 26), "LUMINA RIFT", title);
-            GUI.Label(new Rect(72, 34, 220, 18), "COLLECT • GROW • SHINE", eyebrow);
+            GUI.Label(new Rect(72, 34, 220, 18), "CLICK. COLLECT. ASCEND.", eyebrow);
             DrawCurrency(new Rect(width - 665, 9, 190, 45), "◇", Number(state.Credits), "CREDITS", Cyan);
             DrawCurrency(new Rect(width - 468, 9, 130, 45), "▱", state.StandardTickets.ToString(), "TICKETS", Violet);
             DrawCurrency(new Rect(width - 330, 9, 130, 45), "✦", state.Lumina.ToString(), "LUMINA", Gold);
@@ -193,14 +205,16 @@ namespace LuminaRift
             GUI.Label(new Rect(stage.x + 42, stage.yMax - 90, 145, 20), "LV. " + active.Level.ToString("00"), title);
             GUI.Label(new Rect(stage.x + 42, stage.yMax - 66, 210, 18), "AFFINITY " + Roman(state.GetAffinityRank(active)), eyebrow);
             GUI.Label(new Rect(stage.x + 250, stage.yMax - 86, 210, 22), "+" + Number(state.ClickIncome) + " / CLICK", heading);
-            GUI.Label(new Rect(stage.x + 250, stage.yMax - 60, 210, 22), "+" + Number(state.PassiveIncomePerSecond) + " / SEC", heading);
-            GUI.Label(new Rect(stage.xMax - 255, stage.yMax - 78, 220, 28), "TAP FOR CREDITS", centered);
+            GUI.Label(new Rect(stage.x + 250, stage.yMax - 60, 210, 22), "+" + Number(state.PassiveIncomePerSecond) + " TEAM / SEC", heading);
+            string supportNames = state.SupportCharacters.Count == 0 ? "No Support Echoes assigned" : string.Join("  •  ", state.SupportCharacters.Select(item => item.Definition.DisplayName));
+            GUI.Label(new Rect(stage.xMax - 255, stage.yMax - 91, 220, 18), "TAP • SUPPORT " + state.SupportCharacters.Count + " / " + LuminaRiftGameState.MaxSupportCharacters, eyebrow);
+            DrawFittedLabel(new Rect(stage.xMax - 255, stage.yMax - 70, 220, 28), supportNames, small);
 
             GUI.Box(rail, GUIContent.none, panelStyle); DrawFrame(rail, new Color(Violet.r, Violet.g, Violet.b, .28f));
-            GUI.Label(new Rect(rail.x + 24, rail.y + 18, rail.width - 48, 18), "ACTIVE ECHO • PROGRESSION", eyebrow);
+            GUI.Label(new Rect(rail.x + 24, rail.y + 18, rail.width - 48, 18), "ECHO TEAM • PROGRESSION", eyebrow);
             GUI.Label(new Rect(rail.x + 24, rail.y + 44, rail.width - 48, 34), "LEVEL " + active.Level + " / " + config.RunLevelCap, title);
-            DrawStatLine(rail.x + 24, rail.y + 93, rail.width - 48, "PERMANENT BONUS", "×" + state.AscensionMultiplier.ToString("0.00"));
-            DrawStatLine(rail.x + 24, rail.y + 133, rail.width - 48, "PASSIVE / SEC", Number(state.PassiveIncomePerSecond));
+            DrawStatLine(rail.x + 24, rail.y + 93, rail.width - 48, "TEAM PASSIVE / SEC", Number(state.PassiveIncomePerSecond));
+            DrawStatLine(rail.x + 24, rail.y + 133, rail.width - 48, "SUPPORT / SEC", Number(state.SupportPassiveIncomePerSecond));
             DrawStatLine(rail.x + 24, rail.y + 173, rail.width - 48, "NEXT LEVEL", "◇ " + Number(state.NextLevelCost));
             GUI.Label(new Rect(rail.x + 24, rail.y + 224, rail.width - 48, 18), "LEVEL UP", eyebrow);
             int buyAmount = state.LevelTenUnlocked ? 10 : 1; GUI.enabled = InterfaceEnabled && state.CanLevel;
@@ -225,27 +239,37 @@ namespace LuminaRift
         private void DrawAscension(Rect area)
         {
             GUI.Label(new Rect(area.x + 8, area.y, 700, 36), "ASCENSION", title);
-            GUI.Label(new Rect(area.x + 8, area.y + 40, area.width - 16, 24), "Every owned Echo at level " + config.AscensionMinimumLevel + "+ contributes. Higher levels earn greater rewards.", body);
+            GUI.Label(new Rect(area.x + 8, area.y + 40, area.width - 16, 24), "Reach LV. " + config.AscensionMinimumLevel + " to make an Echo ready. Every ready Echo adds to the reward.", body);
             Rect roster = new Rect(area.x, area.y + 82, area.width - 396, area.height - 82);
             Rect summary = new Rect(roster.xMax + 16, roster.y, 380, roster.height);
             GUI.Box(roster, GUIContent.none, panelStyle); DrawFrame(roster, Edge);
-            GUI.Label(new Rect(roster.x + 24, roster.y + 18, roster.width - 48, 24), "YOUR COLLECTION'S CONTRIBUTION", eyebrow);
-            const int pageSize = 7;
-            int pageCount = Mathf.Max(1, Mathf.CeilToInt(state.Roster.Count / (float)pageSize));
-            ascensionPage = Mathf.Clamp(ascensionPage, 0, pageCount - 1);
-            DrawPager(new Rect(area.xMax - 380, area.y + 2, 372, 32), ref ascensionPage, pageCount);
-            float rowHeight = (roster.height - 60) / pageSize;
-            int first = ascensionPage * pageSize, last = Mathf.Min(first + pageSize, state.Roster.Count);
-            for (int i = first; i < last; i++)
+            GUI.Label(new Rect(roster.x + 24, roster.y + 16, roster.width - 48, 20), "COLLECTED ECHOES", eyebrow);
+            GUI.Label(new Rect(roster.x + 24, roster.y + 36, roster.width - 48, 18), "Only collected Echoes are shown. Scroll to review everyone.", small);
+            List<CharacterRuntimeState> owned = state.Roster.Where(character => character.IsOwned).ToList();
+            const float rowHeight = 66;
+            Rect ascensionViewport = new Rect(roster.x + 16, roster.y + 62, roster.width - 42, roster.height - 76);
+            Rect ascensionContent = new Rect(0, 0, ascensionViewport.width, Mathf.Max(ascensionViewport.height, owned.Count * rowHeight));
+            HandleScrollInput(ascensionViewport, ascensionContent.height, ref ascensionScroll, ascensionDrag);
+            ascensionScroll = GUI.BeginScrollView(ascensionViewport, ascensionScroll, ascensionContent, false, false, GUIStyle.none, GUIStyle.none);
+            for (int i = 0; i < owned.Count; i++)
             {
-                CharacterRuntimeState character = state.Roster[i];
+                CharacterRuntimeState character = owned[i];
                 AscensionReward part = state.GetAscensionContribution(character);
-                float y = roster.y + 54 + (i - first) * rowHeight;
-                GUI.Label(new Rect(roster.x + 24, y, roster.width * .43f, 25), character.Definition.DisplayName, heading);
-                GUI.Label(new Rect(roster.x + roster.width * .46f, y, 92, 25), character.IsOwned ? "LV. " + character.Level : "LOCKED", eyebrow);
-                GUI.Label(new Rect(roster.x + roster.width * .61f, y, roster.width * .36f - 18, 25), !character.IsOwned ? "Not collected" : part.Power > 0 ? "+" + part.Lumina + " ✦   +" + part.Power + " ◈" : "Ready at LV. " + config.AscensionMinimumLevel, body);
-                DrawRect(new Rect(roster.x + 24, y + rowHeight - 10, roster.width - 48, 1), Edge);
+                float y = i * rowHeight;
+                DrawRect(new Rect(0, y, ascensionContent.width, rowHeight - 8), i % 2 == 0 ? Raised : Panel);
+                GUI.Label(new Rect(14, y + 8, ascensionContent.width * .46f, 22), character.Definition.DisplayName, heading);
+                GUI.Label(new Rect(14, y + 31, 90, 18), "LV. " + character.Level, eyebrow);
+                string contribution = part.Power > 0 ? "+" + part.Lumina + " Lumina   •   +" + part.Power + " Power" : (config.AscensionMinimumLevel - character.Level) + " levels to ready";
+                GUI.Label(new Rect(ascensionContent.width * .51f, y + 17, ascensionContent.width * .46f, 24), contribution, part.Power > 0 ? heading : small);
+                if (part.Power == 0)
+                {
+                    float progress = Mathf.Clamp01(character.Level / (float)config.AscensionMinimumLevel);
+                    DrawRect(new Rect(108, y + 38, ascensionContent.width * .32f, 3), Edge);
+                    DrawRect(new Rect(108, y + 38, ascensionContent.width * .32f * progress, 3), Cyan);
+                }
             }
+            GUI.EndScrollView();
+            DrawScrollIndicator(ascensionViewport, ascensionContent.height, ascensionScroll.y);
             AscensionReward total = state.ProjectedAscensionReward;
             GUI.Box(summary, GUIContent.none, panelStyle); DrawFrame(summary, Violet);
             GUI.Label(new Rect(summary.x + 24, summary.y + 18, 332, 20), "TOTAL ASCENSION REWARD", eyebrow);
@@ -263,29 +287,22 @@ namespace LuminaRift
         {
             GUI.Label(new Rect(area.x + 8, area.y, 420, 34), "CHARACTER COLLECTION", title);
             GUI.Label(new Rect(area.x + 8, area.y + 36, 500, 18), state.Roster.Count(item => item.IsOwned) + " / " + state.Roster.Count + " CHARACTERS COLLECTED", eyebrow);
-            const int pageSize = 6;
-            int pageCount = Mathf.Max(1, Mathf.CeilToInt(state.Roster.Count / (float)pageSize));
-            collectionPage = Mathf.Clamp(collectionPage, 0, pageCount - 1);
-            DrawPager(new Rect(area.xMax - 380, area.y + 8, 372, 32), ref collectionPage, pageCount);
-            float gap = 14, cardWidth = (area.width - gap * 2) / 3f, cardHeight = (area.height - 76 - gap) / 2f;
-            int first = collectionPage * pageSize, last = Mathf.Min(first + pageSize, state.Roster.Count);
-            for (int i = first; i < last; i++)
+            GUI.Label(new Rect(area.x + 430, area.y + 4, area.width - 438, 22), "Some Support bonuses boost Echoes that share a trait. Otherwise, traits can be ignored.", small);
+            const float gap = 14, cardHeight = 205;
+            float scrollTop = area.y + 64, scrollHeight = area.height - 64;
+            Rect viewport = new Rect(area.x, scrollTop, area.width - 10, scrollHeight);
+            float contentWidth = viewport.width, cardWidth = (contentWidth - gap * 2) / 3f;
+            int rows = Mathf.CeilToInt(state.Roster.Count / 3f);
+            Rect content = new Rect(0, 0, contentWidth, rows * (cardHeight + gap) - gap + 4);
+            HandleScrollInput(viewport, content.height, ref collectionScroll, collectionDrag);
+            collectionScroll = GUI.BeginScrollView(viewport, collectionScroll, content, false, false, GUIStyle.none, GUIStyle.none);
+            for (int i = 0; i < state.Roster.Count; i++)
             {
-                int local = i - first, col = local % 3, row = local / 3;
-                DrawCharacterCard(new Rect(area.x + col * (cardWidth + gap), area.y + 70 + row * (cardHeight + gap), cardWidth, cardHeight), state.Roster[i]);
+                int col = i % 3, row = i / 3;
+                DrawCharacterCard(new Rect(col * (cardWidth + gap), row * (cardHeight + gap), cardWidth, cardHeight), state.Roster[i]);
             }
-        }
-
-        private void DrawPager(Rect rect, ref int page, int pageCount)
-        {
-            if (pageCount <= 1) return;
-            GUI.enabled = InterfaceEnabled && page > 0;
-            if (ActionButton(new Rect(rect.x, rect.y, 72, rect.height), "←", ghostButton)) page--;
-            GUI.enabled = InterfaceEnabled;
-            GUI.Label(new Rect(rect.x + 80, rect.y, rect.width - 160, rect.height), "PAGE " + (page + 1) + " / " + pageCount, small);
-            GUI.enabled = InterfaceEnabled && page + 1 < pageCount;
-            if (ActionButton(new Rect(rect.xMax - 72, rect.y, 72, rect.height), "→", ghostButton)) page++;
-            GUI.enabled = InterfaceEnabled;
+            GUI.EndScrollView();
+            DrawScrollIndicator(viewport, content.height, collectionScroll.y);
         }
 
         private void DrawCharacterCard(Rect card, CharacterRuntimeState character)
@@ -301,12 +318,18 @@ namespace LuminaRift
             DrawFittedLabel(new Rect(info.x + 8, info.y + 42, info.width - 16, 28), data.DisplayName.ToUpperInvariant(), heading);
             if (character.IsOwned)
             {
-                GUI.Label(new Rect(info.x + 8, info.y + 74, info.width - 16, 46), "LV. " + character.Level + "   •   AFFINITY " + Roman(state.GetAffinityRank(character)) + "\n" + RarityRole(data.Rarity), small);
+                GUI.Label(new Rect(info.x + 8, info.y + 72, info.width - 16, 20), "LV. " + character.Level + "   •   AFFINITY " + Roman(state.GetAffinityRank(character)), small);
+                DrawFittedLabel(new Rect(info.x + 8, info.y + 94, info.width - 16, 18), Tags(data), small);
+                DrawFittedLabel(new Rect(info.x + 8, info.y + 114, info.width - 16, 18), SupportEffect(data), small);
                 float progress = AffinityProgress(character.AffinityXp);
-                DrawRect(new Rect(info.x + 8, info.y + 124, info.width - 25, 4), Edge);
-                DrawRect(new Rect(info.x + 8, info.y + 124, (info.width - 25) * progress, 4), rarity);
+                DrawRect(new Rect(info.x + 8, info.y + 136, info.width - 25, 4), Edge);
+                DrawRect(new Rect(info.x + 8, info.y + 136, (info.width - 25) * progress, 4), rarity);
                 GUI.enabled = InterfaceEnabled && character != state.ActiveCharacter;
-                if (ActionButton(new Rect(info.x + 8, info.yMax - 46, info.width - 24, 30), character == state.ActiveCharacter ? "ACTIVE" : "SET ACTIVE", character == state.ActiveCharacter ? primaryButton : ghostButton)) state.SetActiveCharacter(character);
+                float buttonWidth = (info.width - 30) / 2f;
+                if (ActionButton(new Rect(info.x + 8, info.yMax - 46, buttonWidth, 30), character == state.ActiveCharacter ? "ACTIVE" : "SET ACTIVE", character == state.ActiveCharacter ? primaryButton : ghostButton)) state.SetActiveCharacter(character);
+                bool isSupport = state.SupportCharacters.Contains(character);
+                GUI.enabled = InterfaceEnabled && character != state.ActiveCharacter && (isSupport || state.SupportCharacters.Count < LuminaRiftGameState.MaxSupportCharacters);
+                if (ActionButton(new Rect(info.x + 14 + buttonWidth, info.yMax - 46, buttonWidth, 30), isSupport ? "REMOVE" : "SUPPORT", isSupport ? secondaryButton : ghostButton)) state.ToggleSupportCharacter(character);
                 GUI.enabled = InterfaceEnabled;
             }
             else
@@ -396,7 +419,9 @@ namespace LuminaRift
             Color accent = character.Definition.AccentColor;
             if (artwork != null)
             {
-                DrawGlow(rect.center, rect.height * .78f, new Color(accent.r, accent.g, accent.b, large ? .2f : .12f));
+                float artworkPortalSize = Mathf.Min(rect.width * .82f, rect.height * .68f);
+                DrawGlow(rect.center, artworkPortalSize * 1.65f, new Color(accent.r, accent.g, accent.b, large ? .2f : .12f));
+                DrawPortal(rect.center, artworkPortalSize, accent);
                 DrawSprite(rect, artwork, large ? 1f : .96f);
                 return;
             }
@@ -405,7 +430,6 @@ namespace LuminaRift
             Vector2 center = rect.center;
             DrawGlow(center, size * 1.65f, new Color(accent.r, accent.g, accent.b, .25f));
             DrawPortal(center, size, accent);
-            DrawDiamond(center, size * .38f, new Color(accent.r, accent.g, accent.b, .16f));
             GUI.Label(new Rect(center.x - size / 2, center.y - size * .22f, size, size * .44f),
                 character.Definition.DisplayName.Substring(0, 1), AccentLabel(large ? 48 : 28, FontStyle.Bold, TextAnchor.MiddleCenter, TextPrimary));
 
@@ -483,10 +507,8 @@ namespace LuminaRift
                 DrawRect(new Rect(info.x, info.y + 265, info.width, 64), new Color(rarity.r, rarity.g, rarity.b, .1f));
                 GUI.Label(new Rect(info.x + 12, info.y + 273, info.width - 24, 48), result.WasDuplicate ? "+" + result.AffinityAwarded + " AFFINITY XP\nYour bond grows stronger" : "ADDED TO YOUR COLLECTION\nReady to join your adventure", centered);
                 GUI.Label(new Rect(card.x + 28, card.yMax - 40, 280, 24), "ECHO " + (revealIndex + 1) + " OF " + revealResults.Count, small);
-                GUI.enabled = revealTimer <= 0;
                 if (ActionButton(new Rect(info.x, card.yMax - 62, info.width, 42), revealIndex + 1 == revealResults.Count ? "VIEW RESULTS" : "REVEAL NEXT", primaryButton))
                     AdvanceReveal();
-                GUI.enabled = true;
             }
             if (ActionButton(new Rect(width - 204, height - 66, 180, 40), "SKIP TO RESULTS", ghostButton)) showSummonSummary = true;
         }
@@ -534,12 +556,12 @@ namespace LuminaRift
             DrawRect(new Rect(box.x, box.y, box.width, 3), Cyan);
             GUI.Label(new Rect(box.x + 40, box.y + 28, box.width - 80, 20), "YOUR ADVENTURE CONTINUED", small);
             GUI.Label(new Rect(box.x + 40, box.y + 57, box.width - 80, 42), "WELCOME BACK", centeredTitle);
-            GUI.Label(new Rect(box.x + 40, box.y + 108, box.width - 80, 36), state.ActiveCharacter.Definition.DisplayName + " earned Credits for " + Duration(pendingOfflineSeconds), centered);
+            GUI.Label(new Rect(box.x + 40, box.y + 108, box.width - 80, 36), "Your Echo team earned Credits for " + Duration(pendingOfflineSeconds), centered);
             Rect reward = new Rect(box.x + 48, box.y + 164, box.width - 96, 104);
             DrawRect(reward, new Color(Cyan.r, Cyan.g, Cyan.b, .09f));
             GUI.Label(new Rect(reward.x + 16, reward.y + 15, reward.width - 32, 46), "◇ " + Number(pendingOfflineCredits), centeredDisplay);
             GUI.Label(new Rect(reward.x, reward.y + 66, reward.width, 20), "CREDITS READY TO COLLECT", small);
-            GUI.Label(new Rect(box.x + 40, box.y + 282, box.width - 80, 22), "Up to " + config.OfflineEarningsCapHours + " hours of offline earnings", small);
+            GUI.Label(new Rect(box.x + 40, box.y + 282, box.width - 80, 22), Mathf.RoundToInt(config.OfflineEarningsRate * 100) + "% of normal team income • up to " + config.OfflineEarningsCapHours + " hours", small);
             if (ActionButton(new Rect(box.x + 90, box.yMax - 70, box.width - 180, 46), "COLLECT " + Number(pendingOfflineCredits) + " CREDITS", primaryButton))
             {
                 double collected = pendingOfflineCredits;
@@ -641,13 +663,86 @@ namespace LuminaRift
         private static float RevealDuration(GachaResult result) { return result.Character.Definition.Rarity == CharacterRarity.FiveStar ? 2.6f : result.Character.Definition.Rarity == CharacterRarity.FourStar ? 1.9f : 1.45f; }
         private static string Stars(CharacterRarity rarity) { return new string('★', (int)rarity); }
         private static string Roman(int rank) { return rank == 3 ? "III" : rank == 2 ? "II" : "I"; }
-        private static string RarityRole(CharacterRarity rarity) { return rarity == CharacterRarity.ThreeStar ? "EARLY EFFICIENCY" : rarity == CharacterRarity.FiveStar ? "LATE-RUN SCALING" : "BALANCED GROWTH"; }
+        private static string Tags(CharacterData data) { return data.Tags.Count == 0 ? "No traits" : string.Join("  •  ", data.Tags.Select(tag => tag.ToString())); }
+        private static string SupportEffect(CharacterData data)
+        {
+            string amount = Mathf.RoundToInt(data.SupportEffectValue * 100) + "%";
+            if (data.SupportEffect == SupportEffectType.ClickIncome) return "As Support: clicks earn " + amount + " more";
+            if (data.SupportEffect == SupportEffectType.OfflineIncome) return "As Support: away earnings +" + amount;
+            if (data.SupportEffect == SupportEffectType.TagIncome) return "As Support: " + data.SupportEffectTag + " Echoes earn +" + amount;
+            return "As Support: team passive +" + amount;
+        }
         private static Color RarityColor(CharacterRarity rarity) { return rarity == CharacterRarity.FiveStar ? Gold : rarity == CharacterRarity.FourStar ? Violet : Cyan; }
         private static string Number(double value) { if (value >= 1e15) return (value / 1e15).ToString("0.##") + "Qa"; if (value >= 1e12) return (value / 1e12).ToString("0.##") + "T"; if (value >= 1e9) return (value / 1e9).ToString("0.##") + "B"; if (value >= 1e6) return (value / 1e6).ToString("0.##") + "M"; if (value >= 1e3) return (value / 1e3).ToString("0.##") + "K"; return value.ToString(value < 100 ? "0.0" : "0"); }
         private static string Duration(double seconds) { TimeSpan time = TimeSpan.FromSeconds(Math.Max(0, seconds)); return time.TotalHours >= 1 ? ((int)time.TotalHours) + "h " + time.Minutes + "m" : time.Minutes > 0 ? time.Minutes + "m " + time.Seconds + "s" : time.Seconds + "s"; }
         private static Color Hex(string hex) { Color value; ColorUtility.TryParseHtmlString("#" + hex, out value); return value; }
 
         private void DrawRect(Rect rect, Color color) { DrawTexture(rect, pixel, color); }
+        private void HandleScrollInput(Rect viewport, float contentHeight, ref Vector2 scroll, ScrollDragState drag)
+        {
+            float maxScroll = Mathf.Max(0, contentHeight - viewport.height);
+            scroll.y = Mathf.Clamp(scroll.y, 0, maxScroll);
+            if (maxScroll <= 0) return;
+
+            float thumbHeight = Mathf.Max(34, viewport.height * viewport.height / contentHeight);
+            float travel = viewport.height - thumbHeight;
+            float thumbY = viewport.y + travel * (scroll.y / maxScroll);
+            Rect barHitArea = new Rect(viewport.xMax, viewport.y, 10, viewport.height);
+            Rect thumbHitArea = new Rect(viewport.xMax, thumbY, 10, thumbHeight);
+            Event current = Event.current;
+
+            if (current.type == EventType.ScrollWheel && viewport.Contains(current.mousePosition))
+            {
+                scroll.y = Mathf.Clamp(scroll.y + current.delta.y * 34f, 0, maxScroll);
+                current.Use();
+            }
+            else if (current.type == EventType.MouseDown && current.button == 0 && thumbHitArea.Contains(current.mousePosition))
+            {
+                drag.DraggingBar = true; drag.PendingContent = false;
+                drag.PointerStart = current.mousePosition; drag.ScrollStart = scroll; current.Use();
+            }
+            else if (current.type == EventType.MouseDown && current.button == 0 && barHitArea.Contains(current.mousePosition))
+            {
+                scroll.y = Mathf.Clamp((current.mousePosition.y - viewport.y - thumbHeight * .5f) / travel * maxScroll, 0, maxScroll);
+                drag.DraggingBar = true; drag.PendingContent = false;
+                drag.PointerStart = current.mousePosition; drag.ScrollStart = scroll; current.Use();
+            }
+            else if (current.type == EventType.MouseDown && current.button == 0 && viewport.Contains(current.mousePosition))
+            {
+                drag.PendingContent = true; drag.PointerStart = current.mousePosition; drag.ScrollStart = scroll;
+            }
+            else if (current.type == EventType.MouseDrag && current.button == 0 && drag.DraggingBar)
+            {
+                scroll.y = Mathf.Clamp(drag.ScrollStart.y + (current.mousePosition.y - drag.PointerStart.y) / travel * maxScroll, 0, maxScroll);
+                current.Use();
+            }
+            else if (current.type == EventType.MouseDrag && current.button == 0 && (drag.PendingContent || drag.DraggingContent))
+            {
+                if (drag.DraggingContent || Vector2.Distance(current.mousePosition, drag.PointerStart) >= 5f)
+                {
+                    drag.DraggingContent = true; drag.PendingContent = false;
+                    GUIUtility.hotControl = 0;
+                    scroll.y = Mathf.Clamp(drag.ScrollStart.y - (current.mousePosition.y - drag.PointerStart.y), 0, maxScroll);
+                    current.Use();
+                }
+            }
+            else if (current.rawType == EventType.MouseUp && current.button == 0)
+            {
+                if (drag.DraggingBar || drag.DraggingContent) { GUIUtility.hotControl = 0; current.Use(); }
+                drag.PendingContent = false; drag.DraggingContent = false; drag.DraggingBar = false;
+            }
+        }
+        private void DrawScrollIndicator(Rect viewport, float contentHeight, float scrollY)
+        {
+            if (contentHeight <= viewport.height + 1) return;
+            Rect track = new Rect(viewport.xMax + 3, viewport.y, 3, viewport.height);
+            float thumbHeight = Mathf.Max(34, viewport.height * viewport.height / contentHeight);
+            float travel = viewport.height - thumbHeight;
+            float maxScroll = contentHeight - viewport.height;
+            float thumbY = viewport.y + travel * Mathf.Clamp01(scrollY / maxScroll);
+            DrawRect(track, new Color(Edge.r, Edge.g, Edge.b, .45f));
+            DrawRect(new Rect(track.x, thumbY, track.width, thumbHeight), Cyan);
+        }
         private static void DrawTexture(Rect rect, Texture texture, Color color) { Color old = GUI.color; GUI.color = color; GUI.DrawTexture(rect, texture); GUI.color = old; }
         private void DrawLine(Vector2 a, Vector2 b, Color color, float width)
         {
@@ -757,7 +852,7 @@ namespace LuminaRift
             if (!fittedLabels.TryGetValue(key, out GUIStyle fitted))
             {
                 fitted = new GUIStyle(style) { wordWrap = false };
-                while (fitted.fontSize > 12 && fitted.CalcSize(content).x > rect.width) fitted.fontSize--;
+                while (fitted.fontSize > 10 && fitted.CalcSize(content).x > rect.width) fitted.fontSize--;
                 if (fittedLabels.Count > 256) fittedLabels.Clear();
                 fittedLabels.Add(key, fitted);
             }

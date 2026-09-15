@@ -8,7 +8,7 @@ namespace LuminaRift
         private static void StartPrototype()
         {
             if (Object.FindAnyObjectByType<LuminaRiftPrototypeUI>() != null) return;
-            GameObject root = new GameObject("Lumina Rift Prototype 0.0.4"); Object.DontDestroyOnLoad(root);
+            GameObject root = new GameObject("Lumina Rift Prototype 0.0.5"); Object.DontDestroyOnLoad(root);
             root.AddComponent<LuminaRiftPrototypeUI>().Initialize(PrototypeContent.LoadOrCreate());
         }
     }
