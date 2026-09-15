@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace LuminaRift
 {
-    public sealed class LuminaRiftPrototypeUI : MonoBehaviour
+    public sealed partial class LuminaRiftPrototypeUI : MonoBehaviour
     {
         private enum ScreenView { Home, Characters, Summon, Stats, Ascension }
         private sealed class ClickEffect { public Vector2 Position; public float Born; public string Text; public Color Color; public float Drift; }
@@ -85,7 +85,7 @@ namespace LuminaRift
 
         private void OnApplicationPause(bool paused) { if (paused) SaveNow(); }
         private void OnApplicationQuit() { SaveNow(); }
-        private void OnDestroy() { if (saves != null && state != null) SaveNow(); }
+        private void OnDestroy() { ReleaseBannerGeometry(); if (saves != null && state != null) SaveNow(); }
         private void SaveNow() { if (saves != null && state != null) saves.Save(state.CreateSave(pendingOfflineCredits, pendingOfflineSeconds)); }
 
         private void OnGUI()
@@ -337,62 +337,6 @@ namespace LuminaRift
                 GUI.Label(new Rect(info.x + 8, info.y + 78, info.width - 20, 34), "NOT YET COLLECTED", eyebrow);
                 GUI.Label(new Rect(info.x + 8, info.yMax - 55, info.width - 20, 34), "FIND IN SUMMON", eyebrow);
             }
-        }
-
-        private void DrawSummon(Rect area)
-        {
-            if (state.Banners.Count == 0) return;
-            selectedBanner = Mathf.Clamp(selectedBanner, 0, state.Banners.Count - 1); float tabWidth = 260;
-            for (int i = 0; i < state.Banners.Count; i++)
-                if (ActionButton(new Rect(area.x + i * (tabWidth + 8), area.y, tabWidth, 34), state.Banners[i].DisplayName.ToUpperInvariant(), i == selectedBanner ? primaryButton : ghostButton)) selectedBanner = i;
-            BannerData banner = state.Banners[selectedBanner]; Rect bannerRect = new Rect(area.x, area.y + 46, area.width, area.height - 46);
-            Color accent = banner.Currency == BannerCurrency.Lumina ? Gold : Cyan;
-            DrawTexture(bannerRect, summonGradient, Color.white);
-            Rect artwork = new Rect(bannerRect.x + 506, bannerRect.y + 18, bannerRect.width - 524, bannerRect.height - 36);
-            DrawGlow(artwork.center, 520, new Color(Violet.r, Violet.g, Violet.b, .2f));
-            DrawPortal(artwork.center, 390, accent);
-            for (int i = 0; i < 7; i++)
-            {
-                float angle = i * 51f + Time.realtimeSinceStartup * 2f;
-                Vector2 shard = artwork.center +
-                    new Vector2(Mathf.Cos(angle * Mathf.Deg2Rad), Mathf.Sin(angle * Mathf.Deg2Rad)) * (145 + i % 2 * 34);
-                DrawDiamond(shard, 8 + i % 3 * 4, new Color(Violet.r, Violet.g, Violet.b, .34f));
-            }
-            DrawRect(new Rect(bannerRect.x + 18, bannerRect.y + 18, 470, bannerRect.height - 36), Background);
-            DrawFrame(bannerRect, new Color(accent.r, accent.g, accent.b, .62f));
-            DrawFrame(new Rect(bannerRect.x + 18, bannerRect.y + 18, 470, bannerRect.height - 36), new Color(Gold.r, Gold.g, Gold.b, .3f));
-            CharacterRuntimeState featuredCharacter = banner.RateUpCharacter == null ? null : state.Roster.FirstOrDefault(item => item.Definition == banner.RateUpCharacter);
-            if (featuredCharacter != null)
-                DrawSummonCharacter(featuredCharacter, artwork);
-            else if (banner.RateUpCharacter == null)
-            {
-                GUI.Label(new Rect(artwork.x, artwork.center.y - 34, artwork.width, 68), "◇\nMYSTERY CHARACTER", centeredTitle);
-            }
-            GUI.Label(new Rect(bannerRect.x + 38, bannerRect.y + 32, 360, 18), banner.RateUpCharacter != null ? "FEATURED CHARACTER EVENT" : "STANDARD SUMMON", eyebrow);
-            DrawFittedLabel(new Rect(bannerRect.x + 36, bannerRect.y + 58, 420, 45), banner.DisplayName.ToUpperInvariant(), title);
-            if (banner.RateUpCharacter != null)
-            {
-                GUI.Label(new Rect(bannerRect.x + 38, bannerRect.y + 112, 420, 34), banner.RateUpCharacter.DisplayName.ToUpperInvariant(), title);
-                Color old = GUI.color; GUI.color = Gold; GUI.Label(new Rect(bannerRect.x + 38, bannerRect.y + 148, 250, 24), Stars(banner.RateUpCharacter.Rarity), heading); GUI.color = old;
-                GUI.Label(new Rect(bannerRect.x + 38, bannerRect.y + 180, 390, 72), "WHEN YOU PULL A 5★ • " + Mathf.RoundToInt(banner.RateUpShareOfFiveStar * 100) + "% " + banner.RateUpCharacter.DisplayName.ToUpperInvariant() + "\n" + banner.Description, body);
-            }
-            else GUI.Label(new Rect(bannerRect.x + 38, bannerRect.y + 120, 390, 90), banner.Description + "\n\nEvery ten-pull guarantees a 4★ character or higher.", body);
-            int pity = state.GetPity(banner);
-            float rateTotal = Mathf.Max(.001f, banner.ThreeStarRate + banner.FourStarRate + banner.FiveStarRate);
-            float rateY = banner.RateUpCharacter == null ? bannerRect.y + 245 : bannerRect.yMax - 190;
-            GUI.Label(new Rect(bannerRect.x + 38, rateY, 410, 18),
-                "BASE RATES   3★ " + (100 * banner.ThreeStarRate / rateTotal).ToString("0.#") + "%   •   4★ " + (100 * banner.FourStarRate / rateTotal).ToString("0.#") + "%   •   5★ " + (100 * banner.FiveStarRate / rateTotal).ToString("0.#") + "%", eyebrow);
-            GUI.Label(new Rect(bannerRect.x + 38, rateY + 25, 390, 18), "5★ GUARANTEED WITHIN " + Math.Max(1, banner.HardPity - pity) + " SUMMONS", eyebrow);
-            DrawRect(new Rect(bannerRect.x + 38, rateY + 50, 330, 6), Edge);
-            DrawRect(new Rect(bannerRect.x + 38, rateY + 50, 330 * Mathf.Clamp01((float)pity / banner.HardPity), 6), accent);
-            GUI.Label(new Rect(bannerRect.x + 376, rateY + 40, 82, 22), pity + " / " + banner.HardPity, small);
-            string symbol = banner.Currency == BannerCurrency.Lumina ? "✦" : "▱";
-            GUI.Label(new Rect(bannerRect.x + 38, bannerRect.yMax - 112, 330, 22), "AVAILABLE   " + symbol + " " + state.CurrencyFor(banner), heading);
-            GUI.enabled = InterfaceEnabled && state.CurrencyFor(banner) >= banner.SinglePullCost;
-            if (ActionButton(new Rect(bannerRect.x + 38, bannerRect.yMax - 76, 190, 48), "SUMMON ×1\n" + symbol + " " + banner.SinglePullCost, secondaryButton)) BeginSummon(banner, 1);
-            GUI.enabled = InterfaceEnabled && state.CurrencyFor(banner) >= banner.TenPullCost;
-            if (ActionButton(new Rect(bannerRect.x + 240, bannerRect.yMax - 76, 220, 48), "SUMMON ×10\n" + symbol + " " + banner.TenPullCost, primaryButton)) BeginSummon(banner, 10);
-            GUI.enabled = InterfaceEnabled;
         }
 
         private void DrawStats(Rect area)

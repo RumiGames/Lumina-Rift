@@ -85,6 +85,12 @@ Ascension has its own bottom navigation page. Every owned Echo at level 50 or ab
 
 The Home page keeps upgrades and next milestones together. Banner artwork and orbital effects share the centre of the right-hand region. Echo ring pulses use opacity with stable geometry; reveal cards keep text stationary, and reusable label/button styles avoid repeated style allocation during animation.
 
+## Banner presentation
+
+The Summon banners use code-drawn celestial ornament, stars, and orbital geometry; no generated reference images are included. Frozen Resonance combines the full existing Weiss render fitted to the full-height right column with ice-blue light and snowflake geometry. Standard Rift uses an ivory-and-gold astrolabe with the names of its four five-star Echoes, under the campaign heading “Echoes Beyond the Veil”. Artwork and ornament share a centered inset area, with orbital sizes fitted to its bounds. Rates, pity, currency, and equal-width summon buttons align with the title in the left column, with extra line height for text descenders. Weiss keeps her full-size pose with an optical offset to center her body rather than her sword; the ice sigils orbit the stationary rings once every approximately 52 seconds. The standard constellation stays stationary. Banner ornament is cached as code-rasterized textures and never modifies the GUI transform, preserving nested clipping and alignment. Banner presentation is maintained in `Scripts/UI/LuminaRiftBanners.cs`.
+
+Use **Lumina Rift > Visual Preview (No Save) > Summon** to inspect both banner tabs and the available-currency toggle.
+
 ## Character and banner pool
 
 The Standard Rift contains nine 3★ Echoes, seven 4★ Echoes, and four 5★ Echoes. Frozen Resonance draws its 3★ and 4★ results from that collection and adds Weiss Schnee as its exclusive featured 5★. When a 5★ appears on Frozen Resonance, Weiss has a 50% chance; the remaining 50% is shared by the four standard 5★ Echoes.
