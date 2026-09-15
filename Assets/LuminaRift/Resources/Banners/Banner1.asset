@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Frozen Resonance
   description: "Otherwise, a standard 5\u2605 Echo appears."
   currency: 1
-  singlePullCost: 100
+  singlePullCost: 160
   tenPullCost: 1000
   threeStarRate: 82
   fourStarRate: 16
