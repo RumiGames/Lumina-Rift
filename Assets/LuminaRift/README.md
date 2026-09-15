@@ -1,8 +1,17 @@
-# Lumina Rift — Prototype 0.0.3: Long-Term Progression
+# Lumina Rift — Prototype 0.0.4: Visual Identity
 
 Open `Assets/Scenes/Main.unity` and press Play. On first import, the editor creates the scene and all character, banner, and balance ScriptableObjects automatically.
 
-## Added in 0.0.3
+## Added in 0.0.4
+
+- A complete sci-fi/fantasy presentation pass built around the Lumina/Rift identity: near-black navy, luminous cyan, violet, restrained gold, glass-like panels, dimensional geometry, and animated star fields.
+- A character-first Home screen with click punch, floating income, Lumina sparks, rarity treatment, compact currency iconography, and a redesigned level/Ascension rail.
+- A new Echo Archive with rarity-visible undiscovered cards, restrained information density, Affinity progress, and active-character framing.
+- A centrepiece Summon screen with selectable banners, animated portal treatment, pity visualization, featured-character presentation, and staged rarity reveals.
+- Original production-style Solara key art used across her Home, archive, Featured banner, and summon reveal appearances.
+- A Unity 6 / URP 17 foundation. On first import, `Lumina Rift > Configure URP Foundation` is run automatically and creates the pipeline assets under `Assets/LuminaRift/Rendering`.
+
+## Preserved from 0.0.3
 
 - Versioned JSON save/load for the current run, collection, Affinity, active Echo, currencies, Ascension progression, banner pity, automation settings, milestone claims, and telemetry.
 - Autosave every 10 seconds and saves on pause, quit, summons, Ascension, offline collection, and save reset.
@@ -30,9 +39,10 @@ Run **Lumina Rift > Validate Prototype 0.0.3 Loop** for the deterministic in-edi
 
 - No cloud save, save migration beyond version 1, or tamper protection.
 - Offline income uses only the active Echo; support teams do not exist yet.
-- Runtime visuals remain prototype IMGUI and target a 16:9 landscape layout.
-- Summon reveals have no skip/history controls.
+- Runtime visuals still use IMGUI for rapid iteration and target a 16:9 landscape layout.
+- Solara is the single visual-quality benchmark; the other Echoes intentionally retain luminous silhouette treatment until their final art direction is approved.
+- Summon reveals can be skipped but do not yet have a persistent pull-history screen.
 
-## Recommended 0.0.4
+## Recommended 0.0.5
 
-Playtest multiple sessions first and use the Rift Record to tune time-to-Ascend, Featured-pull cadence, and automation thresholds. Once retention pacing is sound, build Active + Support teams, character abilities, tags, and synergy so collection choices affect more than income curves.
+Evaluate the new identity in motion before expanding its asset count. Replace Solara only after a representative Koikatsu render has been tested in the same Home/card/banner crops; then carry the approved art pipeline to the remaining Echoes. Once the presentation and retention pacing are sound, build Active + Support teams, abilities, tags, and synergy.
