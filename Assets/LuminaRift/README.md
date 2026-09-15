@@ -4,11 +4,11 @@ Open `Assets/Scenes/Main.unity` and press Play. On first import, the editor crea
 
 ## Added in 0.0.4
 
-- A complete sci-fi/fantasy presentation pass built around the Lumina/Rift identity: near-black navy, luminous cyan, violet, restrained gold, glass-like panels, dimensional geometry, and animated star fields.
-- A character-first Home screen with click punch, floating income, Lumina sparks, rarity treatment, compact currency iconography, and a redesigned level/Ascension rail.
-- A new Echo Archive with rarity-visible undiscovered cards, restrained information density, Affinity progress, and active-character framing.
-- A centrepiece Summon screen with selectable banners, animated portal treatment, pity visualization, featured-character presentation, and staged rarity reveals.
-- Original production-style Solara key art used across her Home, archive, Featured banner, and summon reveal appearances.
+- An art-independent astral-fantasy presentation built from cloud blue, pearl ivory, soft lavender, champagne gold, frosted panels, procedural clouds, orbital geometry, and crystalline rift light.
+- A character-first Home screen with click glow, floating income, rarity treatment, compact currencies, and a unified income/level/milestone rail.
+- A coherent Character Collection with names visible for every character, explicit collected/not-yet-collected status, rarity treatment, Affinity progress, and active-character framing.
+- A centrepiece Summon screen with a code-driven celestial banner canvas, a calm text-safe information panel, selectable banners, pity visualization, featured-character presentation, and staged rarity reveals.
+- Koikatsu-ready presentation slots on every character: card portrait, Home full-body render, and Summon promotional pose. Missing art falls back cleanly without baking placeholder images into the visual identity.
 - A Unity 6 / URP 17 foundation. On first import, `Lumina Rift > Configure URP Foundation` is run automatically and creates the pipeline assets under `Assets/LuminaRift/Rendering`.
 
 ## Preserved from 0.0.3
@@ -21,7 +21,22 @@ Open `Assets/Scenes/Main.unity` and press Play. On first import, the editor crea
 - Local Rift Record statistics: run/lifetime time, last Ascension duration, highest level, pulls, 5-star pulls, clicks, and lifetime Credits.
 - A confirmed developer Reset Save button.
 
-The existing Standard/Featured banners, separate 30-pull pity, 10-pull guarantee, Affinity ranks, six-Echo roster, and scalable Ascension rewards are preserved.
+The Standard and Featured banners use separate 40-pull pity counters, a 10-pull 4★ guarantee, Affinity ranks, a 21-Echo roster, and scalable Ascension rewards.
+
+## Contrast and visual hierarchy
+
+- Midnight-blue background, opaque navy panels, and lighter slate cards establish distinct layers.
+- Bright primary text, larger supporting labels, and gold actions improve readability. Disabled actions keep readable labels without accepting input.
+- Status messages have dedicated space above navigation. Missing character art uses an orbital monogram sigil.
+
+## Presentation polish
+
+- Passive text and panels have fixed states; only buttons react to hover, with no font or layout changes. Banner tabs are wider and banner titles fit on one line.
+- Offline earnings use separate heading, duration, reward, and collection rows with a readable Credit total.
+- Summons build from a charging rift into rarity-coloured light and a character reveal. Five-star arrivals have a longer build and a fuller burst.
+- Reveals wait for **Reveal next**. **Skip to results** works throughout the sequence. Both single and ten-pulls finish with a retained summary showing each Echo, rarity, new ownership, and duplicate Affinity rewards.
+- Modal screens consistently block background actions. Summon results are awarded and saved before the presentation starts; advancing or skipping never charges again.
+- Banner base rates and remaining hard pity read from banner data.
 
 ## Tuning
 
@@ -33,16 +48,30 @@ After Unity imports the project:
 
 The local save is named `lumina-rift-save.json` under `Application.persistentDataPath`. Saving is local-only; no telemetry leaves the device.
 
-Run **Lumina Rift > Validate Prototype 0.0.3 Loop** for the deterministic in-editor smoke test.
+Run **Lumina Rift > Validate Prototype 0.0.4 Loop** for the deterministic in-editor smoke test, or **Lumina Rift > Validate Presentation Flow** to include modal blocking, summon progression, result retention, and offline reward checks.
 
 ## Known limits
 
 - No cloud save, save migration beyond version 1, or tamper protection.
 - Offline income uses only the active Echo; support teams do not exist yet.
 - Runtime visuals still use IMGUI for rapid iteration and target a 16:9 landscape layout.
-- Solara is the single visual-quality benchmark; the other Echoes intentionally retain luminous silhouette treatment until their final art direction is approved.
+- Final character renders are intentionally unassigned; characters use lightweight luminous silhouettes until Koikatsu exports are added to their presentation slots.
 - Summon reveals can be skipped but do not yet have a persistent pull-history screen.
 
 ## Recommended 0.0.5
 
-Evaluate the new identity in motion before expanding its asset count. Replace Solara only after a representative Koikatsu render has been tested in the same Home/card/banner crops; then carry the approved art pipeline to the remaining Echoes. Once the presentation and retention pacing are sound, build Active + Support teams, abilities, tags, and synergy.
+Import one representative Koikatsu character as a transparent card portrait, Home full-body render, and Summon pose; evaluate all three crops before carrying that export pipeline to the remaining characters. Once the presentation and retention pacing are sound, build Active + Support teams, abilities, tags, and synergy.
+
+Open **Lumina Rift > Visual Preview (No Save)** to inspect Home, Collection, Summon, Records, Offline, Reveal, Results, and Ascension at the 1280x720 reference layout. This editor-only preview uses disposable sample data and never creates a save service. The currency toggle previews enabled and disabled summon buttons.
+
+## Collection Ascension
+
+Ascension has its own bottom navigation page. Every owned Echo at level 50 or above contributes its configured reward; switching the active Echo does not change the total. Each contribution appears alongside the total Lumina, permanent Power, and resulting income multiplier. The current level cap is 100, so levels beyond 50 increase the reward. Ascension resets Credits, all run levels, and milestone claims together while keeping collection, Affinity, currencies, pity, and permanent progress.
+
+The Home page keeps upgrades and next milestones together. Banner artwork and orbital effects share the centre of the right-hand region. Echo ring pulses use opacity with stable geometry; reveal cards keep text stationary, and reusable label/button styles avoid repeated style allocation during animation.
+
+## Character and banner pool
+
+The Standard Rift contains nine 3★ Echoes, seven 4★ Echoes, and four 5★ Echoes. Frozen Resonance draws its 3★ and 4★ results from that collection and adds Weiss Schnee as its exclusive featured 5★. When a 5★ appears on Frozen Resonance, Weiss has a 50% chance; the remaining 50% is shared by the four standard 5★ Echoes.
+
+Both banners use base rates of 82% for 3★, 16% for 4★, and 2% for 5★, with a guaranteed 5★ by summon 40. Ten-pulls still guarantee at least one 4★ or higher.

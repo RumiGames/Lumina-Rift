@@ -10,16 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
-  m_Name: Solara
+  m_Name: Weiss Schnee
   m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
-  characterId: solara
-  displayName: Solara
-  description: A radiant champion whose power blooms late.
+  characterId: weiss_schnee
+  displayName: Weiss Schnee
+  description: The exclusive featured Echo, combining precision with exceptional scaling.
   rarity: 5
-  baseClickIncome: 1.6
-  basePassiveIncome: 0.6
-  levelCostMultiplier: 1.32
-  clickLevelExponent: 1.28
-  passiveLevelExponent: 1.3
-  accentColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  baseClickIncome: 1.68
+  basePassiveIncome: 0.8
+  levelCostMultiplier: 1.35
+  clickLevelExponent: 1.27
+  passiveLevelExponent: 1.36
+  accentColor: {r: 0.55, g: 0.82, b: 1, a: 1}
   portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

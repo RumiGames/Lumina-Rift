@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
+  m_Name: Levy McGarden
+  m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
+  characterId: levy_mcgarden
+  displayName: Levy McGarden
+  description: A clever support Echo with efficient level costs.
+  rarity: 4
+  baseClickIncome: 1.25
+  basePassiveIncome: 0.5
+  levelCostMultiplier: 0.96
+  clickLevelExponent: 1.09
+  passiveLevelExponent: 1.12
+  accentColor: {r: 0.36, g: 0.68, b: 0.94, a: 1}
+  portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

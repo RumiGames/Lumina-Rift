@@ -10,16 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
-  m_Name: Lyra
+  m_Name: Doll
   m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
-  characterId: lyra
-  displayName: Lyra
-  description: An efficient early-run Rift scout.
+  characterId: doll
+  displayName: Doll
+  description: A composed Echo tuned for steady passive gains.
   rarity: 3
-  baseClickIncome: 1
-  basePassiveIncome: 0.32
-  levelCostMultiplier: 0.78
-  clickLevelExponent: 1.02
-  passiveLevelExponent: 0.92
-  accentColor: {r: 0.25, g: 0.8, b: 1, a: 1}
+  baseClickIncome: 0.92
+  basePassiveIncome: 0.42
+  levelCostMultiplier: 0.84
+  clickLevelExponent: 0.98
+  passiveLevelExponent: 1.03
+  accentColor: {r: 0.55, g: 0.76, b: 0.92, a: 1}
   portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

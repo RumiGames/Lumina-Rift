@@ -31,8 +31,25 @@ namespace LuminaRift
         public float AscensionMultiplier { get { return 1f + AscensionPower * config.PermanentIncomeBonusPerPower; } }
         public double ClickIncome { get { return CalculateIncome(true); } }
         public double PassiveIncomePerSecond { get { return CalculateIncome(false); } }
-        public bool CanAscend { get { return ActiveCharacter != null && ActiveCharacter.Level >= config.AscensionMinimumLevel; } }
-        public AscensionReward ProjectedAscensionReward { get { return config.GetAscensionReward(ActiveCharacter == null ? 0 : ActiveCharacter.Level); } }
+        public bool CanAscend { get { return roster.Any(character => character.IsOwned && character.Level >= config.AscensionMinimumLevel); } }
+        public AscensionReward GetAscensionContribution(CharacterRuntimeState character)
+        {
+            return character != null && character.IsOwned && roster.Contains(character)
+                ? config.GetAscensionReward(character.Level) : new AscensionReward(0, 0);
+        }
+        public AscensionReward ProjectedAscensionReward
+        {
+            get
+            {
+                AscensionReward total = new AscensionReward(0, 0);
+                foreach (CharacterRuntimeState character in roster)
+                {
+                    AscensionReward contribution = GetAscensionContribution(character);
+                    total.Lumina += contribution.Lumina; total.Power += contribution.Power;
+                }
+                return total;
+            }
+        }
 
         public double NextLevelCost
         {

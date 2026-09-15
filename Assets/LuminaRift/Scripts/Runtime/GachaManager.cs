@@ -71,7 +71,8 @@ namespace LuminaRift
             {
                 CharacterRuntimeState featured = roster.FirstOrDefault(item => item.Definition == banner.RateUpCharacter); if (featured != null) return featured;
             }
-            List<CharacterRuntimeState> candidates = roster.Where(item => item.Definition.Rarity == rarity && banner.CharacterPool.Contains(item.Definition)).ToList();
+            List<CharacterRuntimeState> candidates = roster.Where(item => item.Definition.Rarity == rarity && banner.CharacterPool.Contains(item.Definition)
+                && (rarity != CharacterRarity.FiveStar || item.Definition != banner.RateUpCharacter)).ToList();
             if (candidates.Count == 0) candidates = roster.Where(item => banner.CharacterPool.Contains(item.Definition)).ToList();
             return candidates.Count == 0 ? null : candidates[random.Next(candidates.Count)];
         }

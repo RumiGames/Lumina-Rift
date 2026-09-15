@@ -10,16 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
-  m_Name: Vesper
+  m_Name: Orihime Inoue
   m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
-  characterId: vesper
-  displayName: Vesper
-  description: A rare oracle with exceptional passive scaling.
-  rarity: 5
-  baseClickIncome: 1.35
-  basePassiveIncome: 0.78
-  levelCostMultiplier: 1.38
-  clickLevelExponent: 1.18
-  passiveLevelExponent: 1.38
-  accentColor: {r: 1, g: 0.35, b: 0.75, a: 1}
+  characterId: orihime_inoue
+  displayName: Orihime Inoue
+  description: A radiant support Echo with excellent passive growth.
+  rarity: 4
+  baseClickIncome: 1.22
+  basePassiveIncome: 0.52
+  levelCostMultiplier: 1
+  clickLevelExponent: 1.08
+  passiveLevelExponent: 1.13
+  accentColor: {r: 1, g: 0.58, b: 0.28, a: 1}
   portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

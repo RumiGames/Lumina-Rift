@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
+  m_Name: Kalifa
+  m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
+  characterId: kalifa
+  displayName: Kalifa
+  description: A technical Echo who rewards active play.
+  rarity: 3
+  baseClickIncome: 1.1
+  basePassiveIncome: 0.29
+  levelCostMultiplier: 0.83
+  clickLevelExponent: 1.05
+  passiveLevelExponent: 0.93
+  accentColor: {r: 0.92, g: 0.7, b: 0.32, a: 1}
+  portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

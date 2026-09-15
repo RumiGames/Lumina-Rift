@@ -22,7 +22,7 @@ namespace LuminaRift
     [CreateAssetMenu(fileName = "PrototypeGameConfig", menuName = "Lumina Rift/Game Config")]
     public sealed class PrototypeGameConfig : ScriptableObject
     {
-        [SerializeField, HideInInspector] private int prototypeVersion = 3;
+        [SerializeField, HideInInspector] private int prototypeVersion = 4;
         [SerializeField] private List<CharacterData> characters = new List<CharacterData>();
         [SerializeField] private CharacterData startingCharacter;
         [SerializeField] private List<BannerData> banners = new List<BannerData>();
@@ -81,7 +81,7 @@ namespace LuminaRift
 
         public void Configure(IList<CharacterData> roster, IList<BannerData> bannerList)
         {
-            prototypeVersion = 3; characters = new List<CharacterData>(roster); startingCharacter = characters[0]; banners = new List<BannerData>(bannerList);
+            prototypeVersion = 4; characters = new List<CharacterData>(roster); startingCharacter = characters[0]; banners = new List<BannerData>(bannerList);
             milestones = new List<LevelMilestone>
             {
                 new LevelMilestone { level = 10, incomeMultiplier = 2f, standardTickets = 2 },

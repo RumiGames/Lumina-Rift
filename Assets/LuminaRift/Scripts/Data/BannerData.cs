@@ -14,10 +14,10 @@ namespace LuminaRift
         [SerializeField] private BannerCurrency currency;
         [SerializeField, Min(1)] private int singlePullCost = 1;
         [SerializeField, Min(1)] private int tenPullCost = 10;
-        [SerializeField, Min(0f)] private float threeStarRate = 75f;
-        [SerializeField, Min(0f)] private float fourStarRate = 20f;
-        [SerializeField, Min(0f)] private float fiveStarRate = 5f;
-        [SerializeField, Min(1)] private int hardPity = 30;
+        [SerializeField, Min(0f)] private float threeStarRate = 82f;
+        [SerializeField, Min(0f)] private float fourStarRate = 16f;
+        [SerializeField, Min(0f)] private float fiveStarRate = 2f;
+        [SerializeField, Min(1)] private int hardPity = 40;
         [SerializeField] private List<CharacterData> characterPool = new List<CharacterData>();
         [SerializeField] private CharacterData rateUpCharacter;
         [SerializeField, Range(0f, 1f)] private float rateUpShareOfFiveStar = 0.5f;
@@ -39,11 +39,14 @@ namespace LuminaRift
         public Color AccentColor { get { return accentColor; } }
 
         public void Configure(string id, string name, string bio, BannerCurrency type, int singleCost,
-            int multiCost, IList<CharacterData> pool, CharacterData rateUp, Color color)
+            int multiCost, IList<CharacterData> pool, CharacterData rateUp, Color color,
+            float threeRate = 82f, float fourRate = 16f, float fiveRate = 2f, int pity = 40, float featuredShare = .5f)
         {
             bannerId = id; displayName = name; description = bio; currency = type;
             singlePullCost = singleCost; tenPullCost = multiCost; characterPool = new List<CharacterData>(pool);
             rateUpCharacter = rateUp; accentColor = color;
+            threeStarRate = threeRate; fourStarRate = fourRate; fiveStarRate = fiveRate;
+            hardPity = pity; rateUpShareOfFiveStar = featuredShare;
         }
     }
 }

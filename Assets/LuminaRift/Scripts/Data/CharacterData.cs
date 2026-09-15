@@ -17,7 +17,13 @@ namespace LuminaRift
         [SerializeField, Range(0.5f, 2f)] private float clickLevelExponent = 1f;
         [SerializeField, Range(0.5f, 2f)] private float passiveLevelExponent = 1f;
         [SerializeField] private Color accentColor = new Color(0.35f, 0.8f, 1f);
-        [SerializeField] private Sprite portrait = null;
+        [Header("Koikatsu Presentation")]
+        [SerializeField, Tooltip("Transparent bust or close crop used on collection cards.")]
+        private Sprite portrait = null;
+        [SerializeField, Tooltip("Transparent full-body render used on the Home screen.")]
+        private Sprite homeArtwork = null;
+        [SerializeField, Tooltip("Transparent promotional pose used on banners and summon reveals.")]
+        private Sprite summonArtwork = null;
 
         public string CharacterId { get { return characterId; } }
         public string DisplayName { get { return displayName; } }
@@ -30,6 +36,8 @@ namespace LuminaRift
         public float PassiveLevelExponent { get { return passiveLevelExponent; } }
         public Color AccentColor { get { return accentColor; } }
         public Sprite Portrait { get { return portrait; } }
+        public Sprite HomeArtwork { get { return homeArtwork != null ? homeArtwork : portrait; } }
+        public Sprite SummonArtwork { get { return summonArtwork != null ? summonArtwork : homeArtwork != null ? homeArtwork : portrait; } }
 
         public void Configure(string id, string name, string bio, CharacterRarity starRarity, float click,
             float passive, float cost, float clickExponent, float passiveExponent, Color color)

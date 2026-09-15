@@ -15,14 +15,14 @@ namespace LuminaRift.Editor
         private const string ScenePath = "Assets/Scenes/Main.unity";
         static PrototypeAssetSetup() { EditorApplication.delayCall += EnsureAssets; }
 
-        [MenuItem("Lumina Rift/Rebuild Prototype 0.0.3 Data")]
-        public static void Rebuild() { AssetDatabase.DeleteAsset(Root); BuildData(); }
+        [MenuItem("Lumina Rift/Rebuild Prototype 0.0.4 Data")]
+        public static void Rebuild() { DeleteGeneratedData(); BuildData(); }
 
         public static void EnsureAssets()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
             PrototypeGameConfig config = AssetDatabase.LoadAssetAtPath<PrototypeGameConfig>(ConfigPath);
-            if (config == null || config.PrototypeVersion < 3) { if (config != null) AssetDatabase.DeleteAsset(Root); BuildData(); }
+            if (config == null || config.PrototypeVersion < 4) { DeleteGeneratedData(); BuildData(); }
             EnsureScene();
         }
 
@@ -35,6 +35,13 @@ namespace LuminaRift.Editor
             for (int i = 0; i < banners.Count; i++) AssetDatabase.CreateAsset(banners[i], Root + "/Banners/Banner" + i + ".asset");
             PrototypeGameConfig config = ScriptableObject.CreateInstance<PrototypeGameConfig>(); config.Configure(characters, banners);
             AssetDatabase.CreateAsset(config, ConfigPath); AssetDatabase.SaveAssets(); AssetDatabase.Refresh();
+        }
+
+        private static void DeleteGeneratedData()
+        {
+            AssetDatabase.DeleteAsset(ConfigPath);
+            AssetDatabase.DeleteAsset(Root + "/Characters");
+            AssetDatabase.DeleteAsset(Root + "/Banners");
         }
 
         private static void EnsureScene()

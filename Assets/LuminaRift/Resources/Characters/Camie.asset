@@ -10,16 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
-  m_Name: Kael
+  m_Name: Camie
   m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
-  characterId: kael
-  displayName: Kael
-  description: A disciplined vanguard from the Ember Meridian.
-  rarity: 4
-  baseClickIncome: 1.45
-  basePassiveIncome: 0.38
-  levelCostMultiplier: 1.05
-  clickLevelExponent: 1.15
-  passiveLevelExponent: 1.05
-  accentColor: {r: 1, g: 0.32, b: 0.22, a: 1}
+  characterId: camie
+  displayName: Camie
+  description: A lively Echo with accessible all-round growth.
+  rarity: 3
+  baseClickIncome: 1.02
+  basePassiveIncome: 0.35
+  levelCostMultiplier: 0.79
+  clickLevelExponent: 1.01
+  passiveLevelExponent: 0.99
+  accentColor: {r: 0.35, g: 0.86, b: 0.78, a: 1}
   portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

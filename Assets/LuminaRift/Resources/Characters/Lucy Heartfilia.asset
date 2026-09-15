@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
+  m_Name: Lucy Heartfilia
+  m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
+  characterId: lucy_heartfilia
+  displayName: Lucy Heartfilia
+  description: An elite summoner Echo with broad income scaling.
+  rarity: 5
+  baseClickIncome: 1.58
+  basePassiveIncome: 0.76
+  levelCostMultiplier: 1.33
+  clickLevelExponent: 1.24
+  passiveLevelExponent: 1.34
+  accentColor: {r: 1, g: 0.76, b: 0.3, a: 1}
+  portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

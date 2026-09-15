@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
+  m_Name: Mirajane Strauss
+  m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
+  characterId: mirajane_strauss
+  displayName: Mirajane Strauss
+  description: A versatile Echo with balanced income growth.
+  rarity: 3
+  baseClickIncome: 1.03
+  basePassiveIncome: 0.36
+  levelCostMultiplier: 0.82
+  clickLevelExponent: 1.01
+  passiveLevelExponent: 1
+  accentColor: {r: 0.7, g: 0.58, b: 0.92, a: 1}
+  portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

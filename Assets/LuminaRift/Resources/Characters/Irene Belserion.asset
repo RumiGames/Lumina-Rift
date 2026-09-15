@@ -10,16 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
-  m_Name: Bramble
+  m_Name: Irene Belserion
   m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
-  characterId: bramble
-  displayName: Bramble
-  description: A steady guardian with dependable passive income.
+  characterId: irene_belserion
+  displayName: Irene Belserion
+  description: A potent Echo whose active income grows quickly.
   rarity: 3
-  baseClickIncome: 0.9
-  basePassiveIncome: 0.42
-  levelCostMultiplier: 0.82
-  clickLevelExponent: 0.96
-  passiveLevelExponent: 1.02
-  accentColor: {r: 0.3, g: 0.85, b: 0.45, a: 1}
+  baseClickIncome: 1.12
+  basePassiveIncome: 0.3
+  levelCostMultiplier: 0.86
+  clickLevelExponent: 1.06
+  passiveLevelExponent: 0.94
+  accentColor: {r: 0.78, g: 0.34, b: 0.62, a: 1}
   portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

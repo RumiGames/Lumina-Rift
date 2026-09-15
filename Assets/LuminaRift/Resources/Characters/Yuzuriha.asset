@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6f5639d50f0fc548aad4d70bac887e2, type: 3}
+  m_Name: Yuzuriha
+  m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.CharacterData
+  characterId: yuzuriha
+  displayName: Yuzuriha
+  description: A nimble Echo with smooth all-round progression.
+  rarity: 4
+  baseClickIncome: 1.36
+  basePassiveIncome: 0.45
+  levelCostMultiplier: 1.03
+  clickLevelExponent: 1.12
+  passiveLevelExponent: 1.09
+  accentColor: {r: 0.88, g: 0.48, b: 0.72, a: 1}
+  portrait: {fileID: 0}
+  homeArtwork: {fileID: 0}
+  summonArtwork: {fileID: 0}

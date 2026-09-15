@@ -12,21 +12,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 162f8fb7931b04547856931e40b81807, type: 3}
   m_Name: Banner1
   m_EditorClassIdentifier: Assembly-CSharp::LuminaRift.BannerData
-  bannerId: featured_solara
-  displayName: Radiant Convergence
-  description: Solara receives 50% of 5-star results.
+  bannerId: featured_weiss
+  displayName: Frozen Resonance
+  description: "Otherwise, a standard 5\u2605 Echo appears."
   currency: 1
   singlePullCost: 100
   tenPullCost: 1000
-  threeStarRate: 75
-  fourStarRate: 20
-  fiveStarRate: 5
-  hardPity: 30
+  threeStarRate: 82
+  fourStarRate: 16
+  fiveStarRate: 2
+  hardPity: 40
   characterPool:
-  - {fileID: 11400000, guid: 536b39e613f53dd43af90a3a7d57bd94, type: 2}
-  - {fileID: 11400000, guid: e5003eef998bf2549bccdb130b88dbbf, type: 2}
-  - {fileID: 11400000, guid: e1673e3309581e94985c53793d89aebb, type: 2}
-  - {fileID: 11400000, guid: 412d6104f791c9d40a897e53c3074365, type: 2}
-  rateUpCharacter: {fileID: 11400000, guid: 412d6104f791c9d40a897e53c3074365, type: 2}
+  - {fileID: 11400000, guid: 9b4ac182fcc825c449efa0439ae3651b, type: 2}
+  - {fileID: 11400000, guid: a0e432af87719b643b5f8fd7632e24bc, type: 2}
+  - {fileID: 11400000, guid: 14e96f60815917942b45aa4f062d8988, type: 2}
+  - {fileID: 11400000, guid: ab8d9b8ac66ac9d41bace749a35b1d59, type: 2}
+  - {fileID: 11400000, guid: f897d8925ca3c20459db9e2a0ca728b3, type: 2}
+  - {fileID: 11400000, guid: 900d35e73022c6644b22883e1797c1f8, type: 2}
+  - {fileID: 11400000, guid: 97ac2608c1acad745a7eac05fa27e405, type: 2}
+  - {fileID: 11400000, guid: ffa5f844e05789145b11d0213c85aa27, type: 2}
+  - {fileID: 11400000, guid: 591c4706285292a4aaf39b610eb9f628, type: 2}
+  - {fileID: 11400000, guid: e6efa4c46e148214dbdc35cdf25190ad, type: 2}
+  - {fileID: 11400000, guid: 686c7c00dc7f3b54ea9d6f25a3a3df36, type: 2}
+  - {fileID: 11400000, guid: 9d93efea1c9de324aa937be3f8e2a9f0, type: 2}
+  - {fileID: 11400000, guid: 056c448bea9e5e1428bb3d6e0a9e46dd, type: 2}
+  - {fileID: 11400000, guid: fa096569c767b564280a46638bc7a9a7, type: 2}
+  - {fileID: 11400000, guid: 062c3c12840ec5d4bb0267b2dbc59cdb, type: 2}
+  - {fileID: 11400000, guid: e0fc50e22c8b2954f8ff4e6b2121e8a2, type: 2}
+  - {fileID: 11400000, guid: 12bc19a923ac1c64886f4b1aec22107b, type: 2}
+  - {fileID: 11400000, guid: 9e55cd80ee5949243a30877326d1bfbc, type: 2}
+  - {fileID: 11400000, guid: 4a107869200641143a86d457d2e36061, type: 2}
+  - {fileID: 11400000, guid: 61cc6116cc4efe245830388104d4c0b6, type: 2}
+  - {fileID: 11400000, guid: c8ca30352928d484b983996b71e31689, type: 2}
+  rateUpCharacter: {fileID: 11400000, guid: c8ca30352928d484b983996b71e31689, type: 2}
   rateUpShareOfFiveStar: 0.5
-  accentColor: {r: 1, g: 0.55, b: 0.18, a: 1}
+  accentColor: {r: 0.55, g: 0.82, b: 1, a: 1}
